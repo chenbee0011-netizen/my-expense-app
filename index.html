@@ -32,7 +32,7 @@
             display: flex;
             justify-content: space-around;
             background-color: var(--card-bg);
-            padding: 8px;
+            padding: 6px;
             border-radius: 12px;
             margin-bottom: 20px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
@@ -41,11 +41,13 @@
             background: none;
             border: none;
             color: #888;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             cursor: pointer;
-            padding: 6px 8px;
+            padding: 6px 4px;
             border-radius: 8px;
             transition: all 0.2s;
+            flex: 1;
+            text-align: center;
         }
         .nav-tab.active {
             background-color: var(--accent-color);
@@ -232,6 +234,7 @@
         <button class="nav-tab" onclick="switchPage('calendar', this)">月曆</button>
         <button class="nav-tab" onclick="switchPage('add', this)">記一筆</button>
         <button class="nav-tab" onclick="switchPage('accounts', this)">帳戶</button>
+        <button class="nav-tab" onclick="switchPage('categories', this)">分類</button>
         <button class="nav-tab" onclick="switchPage('charts', this)">分析</button>
     </div>
 
@@ -331,6 +334,24 @@
         <div class="card">
             <h3>📂 現有帳戶列表</h3>
             <div id="manageAccountList"></div>
+        </div>
+    </div>
+
+    <!-- 分類管理 -->
+    <div id="categories" class="page">
+        <div class="card">
+            <h2>🏷️ 新增自訂分類</h2>
+            <select id="newCatType">
+                <option value="expense">支出分類</option>
+                <option value="income">收入分類</option>
+            </select>
+            <input type="text" id="newCatIcon" placeholder="圖示 (請輸入 Emoji，例如 🍔 🚗)">
+            <input type="text" id="newCatName" placeholder="分類名稱，例如：餐飲、交通">
+            <button class="submit-btn" onclick="addNewCategory()">新增分類</button>
+        </div>
+        <div class="card">
+            <h3>📂 現有分類列表</h3>
+            <div id="manageCategoryList"></div>
         </div>
     </div>
 
@@ -591,6 +612,25 @@
         renderAll();
     }
 
+    function addNewCategory() {
+        let type = document.getElementById('newCatType').value;
+        let icon = document.getElementById('newCatIcon').value.trim() || '🏷️';
+        let name = document.getElementById('newCatName').value.trim();
+
+        if (!name) { alert('請輸入分類名稱！'); return; }
+        categories.push({ id: 'cat_' + Date.now(), name, icon, type });
+        renderAll();
+        document.getElementById('newCatName').value = '';
+        document.getElementById('newCatIcon').value = '';
+        alert('分類新增成功！');
+    }
+
+    function deleteCategory(id) {
+        if (categories.length <= 1) { alert('至少需要保留一個分類！'); return; }
+        categories = categories.filter(c => c.id !== id);
+        renderAll();
+    }
+
     function updateBudget() {
         let val = parseFloat(document.getElementById('budgetInput').value);
         if (!isNaN(val) && val >= 0) {
@@ -729,7 +769,6 @@
         if (totalExpense === 0) {
             html += '<p style="color:#888; text-align:center;">這個月沒有支出紀錄</p>';
         } else {
-            // 排序分類
             let sortedCats = Object.keys(catStats).sort((a, b) => catStats[b] - catStats[a]);
             sortedCats.forEach(catId => {
                 let cat = categories.find(c => c.id === catId) || { name: '其他', icon: '🔄' };
@@ -762,6 +801,17 @@
         renderCategoryGrid();
         renderCalendar();
         renderAnalysis();
+
+        // 渲染分類管理清單
+        let manageCat = document.getElementById('manageCategoryList');
+        manageCat.innerHTML = '';
+        categories.forEach(cat => {
+            let div = document.createElement('div');
+            div.className = 'item-row';
+            div.innerHTML = `<span>${cat.icon} [${cat.type === 'expense' ? '支出' : '收入'}] ${cat.name}</span>
+                             <button class="btn-icon" onclick="deleteCategory('${cat.id}')">刪除</button>`;
+            manageCat.appendChild(div);
+        });
 
         let now = new Date();
         let dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
