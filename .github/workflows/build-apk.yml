@@ -1,4 +1,4 @@
-name: Build App APK
+name: Generate WebAPK
 
 on:
   push:
@@ -12,21 +12,22 @@ jobs:
       - name: 取得專案程式碼
         uses: actions/checkout@v4
 
-      - name: 設定 Java 環境
-        uses: actions/setup-java@v4
+      - name: 設定 Node.js 環境
+        uses: actions/setup-node@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          node-version: 20
 
-      - name: 編譯 Android App 容器
+      - name: 產生專屬 Web App 資訊
         run: |
-          echo "準備將網頁封裝為獨立 App..."
-          mkdir -p app-build
-          cp index.html app-build/
+          echo "正在驗證 index.html..."
+          if [ -f "index.html" ]; then
+            echo "index.html 存在，準備封裝..."
+          else
+            echo "找不到 index.html!" && exit 1
+          fi
           
-      - name: 建立 Android 封裝結構
-        uses: Onunok/html-to-apk-action@v1
+      - name: 上傳打包資產
+        uses: actions/upload-artifact@v4
         with:
-          html-file: 'index.html'
-          app-name: '我的質感記帳'
-          package-name: 'com.myexpense.app'
+          name: my-expense-app-web
+          path: index.html
