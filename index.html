@@ -78,6 +78,25 @@
             border-color: var(--accent-color);
             outline: none;
         }
+        .type-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .type-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background-color: #2a2a2a;
+            color: #888;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .type-btn.active.expense { background-color: var(--danger-color); color: white; }
+        .type-btn.active.income { background-color: var(--success-color); color: white; }
+        .type-btn.active.transfer { background-color: var(--credit-color); color: white; }
+
         .submit-btn {
             background-color: var(--success-color);
             color: white;
@@ -90,82 +109,11 @@
             font-size: 1rem;
             margin-top: 10px;
         }
-        .submit-btn:active {
-            opacity: 0.8;
-        }
-        .page {
-            display: none;
-        }
-        .page.active {
-            display: block;
-        }
-        /* 計算機彈窗樣式 */
-        .calc-modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.8);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .calc-box {
-            background-color: #1e1e1e;
-            padding: 20px;
-            border-radius: 16px;
-            width: 90%;
-            max-width: 320px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.9);
-            border: 1px solid #444;
-        }
-        .calc-display {
-            background-color: #2a2a2a;
-            border: 1px solid #555;
-            color: #fff;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            font-size: 1.6rem;
-            text-align: right;
-            letter-spacing: 1px;
-            min-height: 30px;
-            word-break: break-all;
-        }
-        .calc-keypad {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-        }
-        .calc-btn {
-            background-color: #333;
-            color: white;
-            border: none;
-            padding: 16px;
-            font-size: 1.2rem;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        .calc-btn:active {
-            background-color: #555;
-        }
-        .calc-btn.operator {
-            background-color: #d35400;
-        }
-        .calc-btn.equals {
-            background-color: var(--accent-color);
-            color: #121212;
-            font-weight: bold;
-        }
-        .calc-btn.clear {
-            background-color: var(--danger-color);
-        }
-        .calc-btn.confirm {
-            background-color: var(--success-color);
-            grid-column: span 4;
-            margin-top: 5px;
-            font-weight: bold;
-        }
-        .transaction-item {
+        .submit-btn:active { opacity: 0.8; }
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        .item-row {
             background-color: #2a2a2a;
             padding: 12px 15px;
             margin-bottom: 8px;
@@ -176,20 +124,40 @@
         }
         .expense { color: var(--danger-color); }
         .income { color: var(--success-color); }
-        .credit-tag { color: var(--credit-color); font-size: 0.85rem; margin-left: 5px; }
+        .transfer { color: var(--credit-color); }
         .delete-btn {
             background: none;
             border: none;
             color: #888;
             cursor: pointer;
-            font-size: 1.2rem;
-            margin-left: 10px;
+            font-size: 1.1rem;
+        }
+        .cat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin: 10px 0;
+        }
+        .cat-option {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            padding: 10px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-color);
+            font-size: 0.9rem;
+        }
+        .cat-option.selected {
+            border-color: var(--accent-color);
+            background-color: rgba(243, 156, 18, 0.15);
         }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <!-- 頂部導航列 -->
     <div class="nav-tabs">
         <button class="nav-tab active" onclick="switchPage('home', this)">首頁</button>
         <button class="nav-tab" onclick="switchPage('add', this)">記一筆</button>
@@ -210,13 +178,10 @@
         </div>
 
         <div class="card">
-            <h3>💰 帳戶資產總覽</h3>
-            <p>現金錢包 : <span id="accCash">$1000</span></p>
-            <p>中國信託 (活存) : <span id="accCTBC">$5000</span></p>
-            <p>國泰世華 (活存) : <span id="accCathay">$10000</span></p>
-            <hr style="border: 0; border-top: 1px solid #444; margin: 10px 0;">
-            <p style="color: var(--credit-color);">信用卡待繳負債：<span id="creditDebt">$0</span></p>
-            <p><strong>淨資產合計：<span id="totalAssets">$16000</span></strong></p>
+            <h3>💰 資產與負債總覽</h3>
+            <div id="accountListUI"></div>
+            <hr style="border: 0; border-top: 1px solid #444; margin: 12px 0;">
+            <p><strong>淨資產合計：<span id="netAssets">$0</span></strong></p>
         </div>
 
         <div class="card">
@@ -225,275 +190,424 @@
         </div>
     </div>
 
-    <!-- 記一筆頁面 -->
+    <!-- 記一筆 -->
     <div id="add" class="page">
         <div class="card">
-            <h2>✍️ 新增記帳</h2>
-            <input type="text" id="title" placeholder="項目名稱 (例如: 午餐)">
-            
-            <input type="text" id="amountDisplay" placeholder="點擊輸入金額 (可加減)" readonly onclick="openCalc()">
-            
-            <select id="type">
-                <option value="expense">支出 (-)</option>
-                <option value="income">收入 (+)</option>
-            </select>
+            <h2>✍️ 新增收支 / 轉帳</h2>
+            <div class="type-selector">
+                <button type="button" class="type-btn active expense" onclick="setTxType('expense')">支出</button>
+                <button type="button" class="type-btn income" onclick="setTxType('income')">收入</button>
+                <button type="button" class="type-btn transfer" onclick="setTxType('transfer')">轉帳</button>
+            </div>
 
-            <label style="font-size: 0.9rem; color: #aaa; margin-top: 8px; display: block;">付款帳戶 / 方式：</label>
-            <select id="accountSource">
-                <option value="cash">現金錢包</option>
-                <option value="ctbc">中國信託 (活存)</option>
-                <option value="cathay">國泰世華 (活存)</option>
-                <option value="credit">信用卡 (不扣現金，計入負債)</option>
-            </select>
+            <label style="font-size:0.85rem; color:#aaa;">日期：</label>
+            <input type="date" id="txDate">
+
+            <div id="categorySection">
+                <label style="font-size:0.85rem; color:#aaa;">選擇分類：</label>
+                <div id="categoryGrid" class="cat-grid"></div>
+            </div>
+
+            <div id="accountSection">
+                <label style="font-size:0.85rem; color:#aaa;" id="accountLabel">支付帳戶：</label>
+                <select id="txAccount"></select>
+            </div>
+
+            <div id="toAccountSection" style="display:none;">
+                <label style="font-size:0.85rem; color:#aaa;">轉入帳戶：</label>
+                <select id="txToAccount"></select>
+            </div>
+
+            <label style="font-size:0.85rem; color:#aaa;">金額 (NT$)：</label>
+            <input type="number" id="txAmount" placeholder="請輸入金額">
+
+            <label style="font-size:0.85rem; color:#aaa;">備註說明：</label>
+            <input type="text" id="txTitle" placeholder="例如：雞腿飯、月薪入帳">
 
             <button class="submit-btn" onclick="addTransaction()">確認新增</button>
         </div>
     </div>
 
-    <!-- 帳戶頁面 -->
+    <!-- 帳戶管理 -->
     <div id="accounts" class="page">
         <div class="card">
-            <h2>💳 帳戶與繳卡費管理</h2>
-            <p>當收到帳單要繳卡費時，可在此執行扣款：</p>
-            <select id="payCreditAccount">
-                <option value="ctbc">從 中國信託 繳納信用卡</option>
-                <option value="cathay">從 國泰世華 繳納信用卡</option>
+            <h2>💳 新增帳戶 / 信用卡</h2>
+            <input type="text" id="newAccName" placeholder="例如：現金錢包、國泰 Cube 卡">
+            <input type="number" id="newAccBalance" placeholder="初始金額 / 額度">
+            <select id="newAccType">
+                <option value="asset">一般資產 (現金/活存)</option>
+                <option value="credit">信用卡 (消費不影響總資產，累積待繳)</option>
             </select>
-            <button class="submit-btn" style="background-color: var(--credit-color); margin-top: 15px;" onclick="payCreditCard()">繳交全部信用卡費</button>
+            <button class="submit-btn" onclick="addNewAccount()">新增帳戶</button>
+        </div>
+        <div class="card">
+            <h3>📂 現有帳戶列表</h3>
+            <div id="manageAccountList"></div>
         </div>
     </div>
 
+    <!-- 分類管理 -->
     <div id="categories" class="page">
-        <div class="card"><h2>🏷️ 消費分類</h2><p>餐飲、交通、娛樂等管理。</p></div>
+        <div class="card">
+            <h2>🏷️ 新增自訂分類</h2>
+            <select id="newCatType">
+                <option value="expense">支出分類</option>
+                <option value="income">收入分類</option>
+            </select>
+            <input type="text" id="newCatIcon" placeholder="圖示 Emoji (例如 🍔、🚗)">
+            <input type="text" id="newCatName" placeholder="分類名稱 (例如：餐飲、交通)">
+            <button class="submit-btn" onclick="addNewCategory()">新增分類</button>
+        </div>
+        <div class="card">
+            <h3>🏷️ 現有分類列表</h3>
+            <div id="manageCategoryList"></div>
+        </div>
     </div>
-    <div id="charts" class="page">
-        <div class="card"><h2>📈 收支圖表分析</h2><p>分析圖表建置中。</p></div>
-    </div>
-</div>
 
-<!-- 計算機彈窗 -->
-<div id="calcModal" class="calc-modal">
-    <div class="calc-box">
-        <div id="calcScreen" class="calc-display">0</div>
-        <div class="calc-keypad">
-            <button class="calc-btn clear" onclick="calcClear()">C</button>
-            <button class="calc-btn" onclick="calcAppend('7')">7</button>
-            <button class="calc-btn" onclick="calcAppend('8')">8</button>
-            <button class="calc-btn" onclick="calcAppend('9')">9</button>
-            <button class="calc-btn operator" onclick="calcAppend('+')">+</button>
-            <button class="calc-btn" onclick="calcAppend('4')">4</button>
-            <button class="calc-btn" onclick="calcAppend('5')">5</button>
-            <button class="calc-btn" onclick="calcAppend('6')">6</button>
-            <button class="calc-btn operator" onclick="calcAppend('-')">-</button>
-            <button class="calc-btn" onclick="calcAppend('1')">1</button>
-            <button class="calc-btn" onclick="calcAppend('2')">2</button>
-            <button class="calc-btn" onclick="calcAppend('3')">3</button>
-            <button class="calc-btn equals" onclick="calcResult()">=</button>
-            <button class="calc-btn" onclick="calcAppend('0')">0</button>
-            <button class="calc-btn" onclick="calcAppend('.')">.</button>
-            <button class="calc-btn" onclick="calcBackSpace()">⌫</button>
-            <button class="calc-btn confirm" onclick="calcConfirm()">確定金額</button>
+    <!-- 圖表 -->
+    <div id="charts" class="page">
+        <div class="card">
+            <h2>📈 本週開銷統計</h2>
+            <div id="weekStats"></div>
+        </div>
+        <div class="card">
+            <h2>📊 每月開銷統計</h2>
+            <div id="monthStats"></div>
         </div>
     </div>
 </div>
 
 <script>
+    // 初始化資料
+    let accounts = JSON.parse(localStorage.getItem('my_accounts')) || [
+        { id: 'cash', name: '現金錢包', balance: 1000, type: 'asset' },
+        { id: 'ctbc', name: '中國信託', balance: 5000, type: 'asset' },
+        { id: 'cathay', name: '國泰世華', balance: 10000, type: 'asset' },
+        { id: 'credit_card', name: '信用卡', balance: 0, type: 'credit' }
+    ];
+
+    let categories = JSON.parse(localStorage.getItem('my_categories')) || [
+        { id: 'food', name: '餐飲', icon: '🍜', type: 'expense' },
+        { id: 'transport', name: '交通', icon: '🚗', type: 'expense' },
+        { id: 'life', name: '生活', icon: '🏠', type: 'expense' },
+        { id: 'shopping', name: '購物', icon: '🛍️', type: 'expense' },
+        { id: 'fun', name: '娛樂', icon: '🎉', type: 'expense' },
+        { id: 'salary', name: '薪資', icon: '💰', type: 'income' }
+    ];
+
+    let transactions = JSON.parse(localStorage.getItem('my_transactions')) || [];
+    let weeklyBudget = localStorage.getItem('my_budget') ? parseFloat(localStorage.getItem('my_budget')) : 3000;
+
+    let currentTxType = 'expense';
+    let selectedCategory = categories.filter(c => c.type === 'expense')[0]?.id || '';
+
+    // 設定日期預設為今天
+    document.getElementById('txDate').valueAsDate = new Date();
+
     function switchPage(pageId, btn) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
         btn.classList.add('active');
+        renderAll();
     }
 
-    let currentExpression = "0";
-    let finalAmount = 0;
+    function setTxType(type) {
+        currentTxType = type;
+        document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active', 'expense', 'income', 'transfer'));
+        const activeBtn = event.target;
+        activeBtn.classList.add('active', type);
 
-    function openCalc() {
-        document.getElementById('calcModal').style.display = 'flex';
-        currentExpression = "0";
-        updateCalcScreen();
-    }
-    function updateCalcScreen() { document.getElementById('calcScreen').innerText = currentExpression; }
-    function calcAppend(val) {
-        if (currentExpression === "0" && val !== '.') currentExpression = val;
-        else currentExpression += val;
-        updateCalcScreen();
-    }
-    function calcClear() { currentExpression = "0"; updateCalcScreen(); }
-    function calcBackSpace() {
-        currentExpression = currentExpression.length > 1 ? currentExpression.slice(0, -1) : "0";
-        updateCalcScreen();
-    }
-    function calcResult() {
-        try {
-            let res = eval(currentExpression);
-            currentExpression = (isNaN(res) || !isFinite(res)) ? "錯誤" : String(res);
-        } catch { currentExpression = "錯誤"; }
-        updateCalcScreen();
-    }
-    function calcConfirm() {
-        calcResult();
-        if (currentExpression !== "錯誤") {
-            finalAmount = parseFloat(currentExpression);
-            document.getElementById('amountDisplay').value = finalAmount;
-            document.getElementById('calcModal').style.display = 'none';
-        } else { alert('算式有誤！'); }
+        if (type === 'transfer') {
+            document.getElementById('categorySection').style.display = 'none';
+            document.getElementById('toAccountSection').style.display = 'block';
+            document.getElementById('accountLabel').innerText = '轉出帳戶：';
+        } else {
+            document.getElementById('categorySection').style.display = 'block';
+            document.getElementById('toAccountSection').style.display = 'none';
+            document.getElementById('accountLabel').innerText = '支付/收支帳戶：';
+            renderCategoryGrid();
+        }
     }
 
-    // 資料與狀態管理
-    let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
-    let weeklyBudget = localStorage.getItem('weeklyBudget') ? parseFloat(localStorage.getItem('weeklyBudget')) : 3000;
-    
-    // 各帳戶初始值
-    let accounts = JSON.parse(localStorage.getItem('accounts')) || {
-        cash: 1000,
-        ctbc: 5000,
-        cathay: 10000,
-        creditDebt: 0 // 信用卡待繳負債
-    };
+    function renderCategoryGrid() {
+        const grid = document.getElementById('categoryGrid');
+        grid.innerHTML = '';
+        let filtered = categories.filter(c => c.type === currentTxType);
+        if (filtered.length > 0 && !filtered.some(c => c.id === selectedCategory)) {
+            selectedCategory = filtered[0].id;
+        }
+        filtered.forEach(cat => {
+            let div = document.createElement('div');
+            div.className = `cat-option ${cat.id === selectedCategory ? 'selected' : ''}`;
+            div.innerHTML = `${cat.icon} ${cat.name}`;
+            div.onclick = () => {
+                selectedCategory = cat.id;
+                renderCategoryGrid();
+            };
+            grid.appendChild(div);
+        });
+    }
+
+    function renderAccountSelectors() {
+        let fromSelect = document.getElementById('txAccount');
+        let toSelect = document.getElementById('txToAccount');
+        let paySelect = document.getElementById('payCreditAccount'); // 若有卡費需求可擴充
+        fromSelect.innerHTML = '';
+        toSelect.innerHTML = '';
+
+        accounts.forEach(acc => {
+            let opt1 = document.createElement('option');
+            opt1.value = acc.id;
+            opt1.innerText = `${acc.name} (${acc.type === 'credit' ? '負債/待繳: $' + acc.balance : '餘額: $' + acc.balance})`;
+            fromSelect.appendChild(opt1);
+
+            let opt2 = document.createElement('option');
+            opt2.value = acc.id;
+            opt2.innerText = acc.name;
+            toSelect.appendChild(opt2);
+        });
+    }
+
+    function addTransaction() {
+        let date = document.getElementById('txDate').value;
+        let amount = parseFloat(document.getElementById('txAmount').value);
+        let title = document.getElementById('txTitle').value.trim() || (currentTxType === 'transfer' ? '帳戶互轉' : '未命名');
+        let accountId = document.getElementById('txAccount').value;
+        let toAccountId = document.getElementById('txToAccount').value;
+
+        if (isNaN(amount) || amount <= 0) {
+            alert('請輸入有效的金額！');
+            return;
+        }
+
+        let acc = accounts.find(a => a.id === accountId);
+
+        if (currentTxType === 'expense') {
+            if (acc.type === 'credit') {
+                acc.balance += amount; // 信用卡消費增加負債，不扣現金
+            } else {
+                if (acc.balance < amount) {
+                    alert('帳戶餘額不足！');
+                    return;
+                }
+                acc.balance -= amount;
+            }
+        } else if (currentTxType === 'income') {
+            acc.balance += amount;
+        } else if (currentTxType === 'transfer') {
+            if (accountId === toAccountId) {
+                alert('轉出與轉入帳戶不能相同！');
+                return;
+            }
+            let toAcc = accounts.find(a => a.id === toAccountId);
+            if (acc.type !== 'credit' && acc.balance < amount) {
+                alert('轉出帳戶餘額不足！');
+                return;
+            }
+            if (acc.type === 'credit') acc.balance -= amount; // 繳卡費概念：扣除信用卡負債
+            else acc.balance -= amount;
+
+            if (toAcc.type === 'credit') toAcc.balance += amount;
+            else toAcc.balance += amount;
+        }
+
+        let tx = {
+            id: Date.now(),
+            date,
+            amount,
+            title,
+            type: currentTxType,
+            categoryId: currentTxType === 'transfer' ? '' : selectedCategory,
+            accountId,
+            toAccountId: currentTxType === 'transfer' ? toAccountId : ''
+        };
+
+        transactions.push(tx);
+        renderAll();
+        document.getElementById('txAmount').value = '';
+        document.getElementById('txTitle').value = '';
+        alert('記帳成功！');
+        switchPage('home', document.querySelectorAll('.nav-tab')[0]);
+    }
+
+    function addNewAccount() {
+        let name = document.getElementById('newAccName').value.trim();
+        let balance = parseFloat(document.getElementById('newAccBalance').value) || 0;
+        let type = document.getElementById('newAccType').value;
+
+        if (!name) {
+            alert('請輸入帳戶名稱！');
+            return;
+        }
+
+        let id = 'acc_' + Date.now();
+        accounts.push({ id, name, balance, type });
+        renderAll();
+        document.getElementById('newAccName').value = '';
+        document.getElementById('newAccBalance').value = '';
+        alert('帳戶新增成功！');
+    }
+
+    function addNewCategory() {
+        let type = document.getElementById('newCatType').value;
+        let icon = document.getElementById('newCatIcon').value.trim() || '📌';
+        let name = document.getElementById('newCatName').value.trim();
+
+        if (!name) {
+            alert('請輸入分類名稱！');
+            return;
+        }
+
+        let id = 'cat_' + Date.now();
+        categories.push({ id, name, icon, type });
+        renderAll();
+        document.getElementById('newCatName').value = '';
+        document.getElementById('newCatIcon').value = '';
+        alert('分類新增成功！');
+    }
+
+    function deleteTransaction(id) {
+        let idx = transactions.findIndex(t => t.id === id);
+        if (idx !== -1) {
+            let t = transactions[idx];
+            let acc = accounts.find(a => a.id === t.accountId);
+            if (acc) {
+                if (t.type === 'expense') {
+                    if (acc.type === 'credit') acc.balance -= t.amount;
+                    else acc.balance += t.amount;
+                } else if (t.type === 'income') {
+                    acc.balance -= t.amount;
+                } else if (t.type === 'transfer') {
+                    if (acc.type === 'credit') acc.balance += t.amount;
+                    else acc.balance += t.amount;
+                    let toAcc = accounts.find(a => a.id === t.toAccountId);
+                    if (toAcc) toAcc.balance -= t.amount;
+                }
+            }
+            transactions.splice(idx, 1);
+            renderAll();
+        }
+    }
+
+    function deleteAccount(id) {
+        if (accounts.length <= 1) {
+            alert('至少需要保留一個帳戶！');
+            return;
+        }
+        accounts = accounts.filter(a => a.id !== id);
+        renderAll();
+    }
+
+    function deleteCategory(id) {
+        categories = categories.filter(c => c.id !== id);
+        renderAll();
+    }
 
     function updateBudget() {
         let val = parseFloat(document.getElementById('budgetInput').value);
         if (!isNaN(val) && val >= 0) {
             weeklyBudget = val;
-            localStorage.setItem('weeklyBudget', weeklyBudget);
+            localStorage.setItem('my_budget', weeklyBudget);
             renderAll();
             alert('預算已更新！');
-        } else { alert('請輸入有效預算！'); }
-    }
-
-    function addTransaction() {
-        let title = document.getElementById('title').value.trim();
-        let type = document.getElementById('type').value;
-        let source = document.getElementById('accountSource').value;
-
-        if (!title || isNaN(finalAmount) || finalAmount <= 0) {
-            alert('請輸入有效的項目與金額！');
-            return;
-        }
-
-        // 根據付款方式扣款或增加負債
-        if (type === 'expense') {
-            if (source === 'cash') accounts.cash -= finalAmount;
-            else if (source === 'ctbc') accounts.ctbc -= finalAmount;
-            else if (source === 'cathay') accounts.cathay -= finalAmount;
-            else if (source === 'credit') {
-                accounts.creditDebt += finalAmount; // 刷信用卡：增加負債，不扣現金！
-            }
-        } else {
-            // 收入預設加到中信活存
-            accounts.ctbc += finalAmount;
-        }
-
-        const transaction = {
-            id: Date.now(),
-            title: title,
-            amount: finalAmount,
-            type: type,
-            source: source
-        };
-
-        transactions.push(transaction);
-        renderAll();
-
-        document.getElementById('title').value = '';
-        document.getElementById('amountDisplay').value = '';
-        finalAmount = 0;
-        
-        switchPage('home', document.querySelectorAll('.nav-tab')[0]);
-    }
-
-    function payCreditCard() {
-        let bank = document.getElementById('payCreditAccount').value;
-        let debt = accounts.creditDebt;
-
-        if (debt <= 0) {
-            alert('目前沒有需要繳納的信用卡負債！');
-            return;
-        }
-
-        if (bank === 'ctbc') {
-            if (accounts.ctbc < debt) { alert('中國信託餘額不足！'); return; }
-            accounts.ctbc -= debt;
-        } else {
-            if (accounts.cathay < debt) { alert('國泰世華餘額不足！'); return; }
-            accounts.cathay -= debt;
-        }
-
-        // 紀錄繳卡費這筆動作
-        transactions.push({
-            id: Date.now(),
-            title: '繳交信用卡費',
-            amount: debt,
-            type: 'expense',
-            source: bank + '_pay'
-        });
-
-        accounts.creditDebt = 0; // 負債歸零
-        renderAll();
-        alert('信用卡費已成功繳納！現金資產已扣款，負債已歸零。');
-    }
-
-    function deleteTransaction(id) {
-        let tIndex = transactions.findIndex(t => t.id === id);
-        if (tIndex !== -1) {
-            let t = transactions[tIndex];
-            // 刪除時把金額反向加扣回來（簡易還原邏輯）
-            if (t.type === 'expense') {
-                if (t.source === 'cash') accounts.cash += t.amount;
-                else if (t.source === 'ctbc') accounts.ctbc += t.amount;
-                else if (t.source === 'cathay') accounts.cathay += t.amount;
-                else if (t.source === 'credit') accounts.creditDebt -= t.amount;
-            }
-            transactions.splice(tIndex, 1);
-            renderAll();
         }
     }
 
     function renderAll() {
-        localStorage.setItem('transactions', JSON.stringify(transactions));
-        localStorage.setItem('accounts', JSON.stringify(accounts));
-        
-        let totalSpentWeek = 0;
+        localStorage.setItem('my_accounts', JSON.stringify(accounts));
+        localStorage.setItem('my_categories', JSON.stringify(categories));
+        localStorage.setItem('my_transactions', JSON.stringify(transactions));
+        localStorage.setItem('my_budget', weeklyBudget);
+
+        renderAccountSelectors();
+        renderCategoryGrid();
+
+        // 渲染首頁帳戶與淨資產
+        let accListUI = document.getElementById('accountListUI');
+        accListUI.innerHTML = '';
+        let netAssets = 0;
+        let totalDebt = 0;
+
+        accounts.forEach(acc => {
+            let p = document.createElement('p');
+            if (acc.type === 'credit') {
+                totalDebt += acc.balance;
+                p.style.color = 'var(--credit-color)';
+                p.innerHTML = `${acc.name} (信用卡負債)：$${acc.balance}`;
+            } else {
+                netAssets += acc.balance;
+                p.innerHTML = `${acc.name}：$${acc.balance}`;
+            }
+            accListUI.appendChild(p);
+        });
+
+        // 淨資產 = 一般資產總和 - 信用卡負債
+        let finalNet = netAssets - totalDebt;
+        document.getElementById('netAssets').innerText = '$' + finalNet;
+
+        // 計算本週花費
+        let weeklySpent = 0;
+        let todayStr = new Date().toISOString().slice(0, 10);
+        let todaySpent = 0;
+
         const listEl = document.getElementById('transactionList');
         listEl.innerHTML = '';
 
         transactions.slice().reverse().forEach(t => {
-            if (t.type === 'expense' && t.source !== 'ctbc_pay' && t.source !== 'cathay_pay') {
-                totalSpentWeek += t.amount;
+            if (t.type === 'expense') {
+                weeklySpent += t.amount;
+                if (t.date === todayStr) todaySpent += t.amount;
             }
 
-            let sourceText = '';
-            if (t.source === 'cash') sourceText = '<span class="credit-tag">[現金]</span>';
-            else if (t.source === 'ctbc') sourceText = '<span class="credit-tag">[中信]</span>';
-            else if (t.source === 'cathay') sourceText = '<span class="credit-tag">[國泰]</span>';
-            else if (t.source === 'credit') sourceText = '<span class="credit-tag" style="color:var(--credit-color)">[信用卡]</span>';
+            let cat = categories.find(c => c.id === t.categoryId) || { name: '轉帳/其他', icon: '🔄' };
+            let acc = accounts.find(a => a.id === t.accountId) || { name: '' };
 
-            const li = document.createElement('li');
-            li.className = 'transaction-item';
+            let li = document.createElement('li');
+            li.className = 'item-row';
             li.innerHTML = `
-                <span>${t.title} ${sourceText}</span>
+                <div>
+                    <strong>${cat.icon} ${t.title}</strong><br>
+                    <small style="color:#888">${t.date} | [${acc.name}]</small>
+                </div>
                 <span class="${t.type}">
-                    ${t.type === 'expense' ? '-' : '+'}$${t.amount}
+                    ${t.type === 'expense' ? '-' : t.type === 'income' ? '+' : '🔄'}$${t.amount}
                     <button class="delete-btn" onclick="deleteTransaction(${t.id})">×</button>
                 </span>
             `;
             listEl.appendChild(li);
         });
 
-        // 更新首頁數字
-        document.getElementById('weeklySpent').innerText = '$' + totalSpentWeek;
-        document.getElementById('weeklyBudgetRemain').innerText = '$' + (weeklyBudget - totalSpentWeek);
+        document.getElementById('weeklySpent').innerText = '$' + weeklySpent;
+        document.getElementById('weeklyBudgetRemain').innerText = '$' + (weeklyBudget - weeklySpent);
+        document.getElementById('todaySpent').innerText = '$' + todaySpent;
         document.getElementById('budgetInput').value = weeklyBudget;
 
-        document.getElementById('accCash').innerText = '$' + accounts.cash;
-        document.getElementById('accCTBC').innerText = '$' + accounts.ctbc;
-        document.getElementById('accCathay').innerText = '$' + accounts.cathay;
-        document.getElementById('creditDebt').innerText = '$' + accounts.creditDebt;
+        // 帳戶管理清單
+        let manageAcc = document.getElementById('manageAccountList');
+        manageAcc.innerHTML = '';
+        accounts.forEach(acc => {
+            let div = document.createElement('div');
+            div.className = 'item-row';
+            div.innerHTML = `<span>${acc.name} (${acc.type === 'credit' ? '信用卡' : '資產'})：$${acc.balance}</span>
+                             <button class="delete-btn" onclick="deleteAccount('${acc.id}')">刪除</button>`;
+            manageAcc.appendChild(div);
+        });
 
-        // 淨資產 = 現金總和 - 信用卡負債
-        let netAssets = accounts.cash + accounts.ctbc + accounts.cathay - accounts.creditDebt;
-        document.getElementById('totalAssets').innerText = '$' + netAssets;
+        // 分類管理清單
+        let manageCat = document.getElementById('manageCategoryList');
+        manageCat.innerHTML = '';
+        categories.forEach(cat => {
+            let div = document.createElement('div');
+            div.className = 'item-row';
+            div.innerHTML = `<span>${cat.icon} [${cat.type === 'expense' ? '支出' : '收入'}] ${cat.name}</span>
+                             <button class="delete-btn" onclick="deleteCategory('${cat.id}')">刪除</button>`;
+            manageCat.appendChild(div);
+        });
+
+        // 圖表頁面統計
+        document.getElementById('weekStats').innerHTML = `<p>本週總支出：$${weeklySpent} (100%)</p>`;
+        document.getElementById('monthStats').innerHTML = `<p>本月總支出：$${weeklySpent} (100%)</p>`;
     }
 
     renderAll();
