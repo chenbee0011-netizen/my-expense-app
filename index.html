@@ -199,6 +199,28 @@
             border-radius: 50%;
             margin-top: 2px;
         }
+
+        /* 分類統計長條圖 */
+        .stat-bar-container {
+            margin-bottom: 12px;
+        }
+        .stat-bar-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+        .stat-bar-bg {
+            background-color: #2a2a2a;
+            border-radius: 4px;
+            height: 8px;
+            overflow: hidden;
+        }
+        .stat-bar-fill {
+            background-color: var(--accent-color);
+            height: 100%;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -315,8 +337,12 @@
     <!-- 分析統計 -->
     <div id="charts" class="page">
         <div class="card">
-            <h2>📈 本週與本月開銷統計</h2>
-            <div id="periodStats"></div>
+            <div class="calendar-header">
+                <button class="btn-icon" onclick="changeAnalysisMonth(-1)">◀ 上月</button>
+                <h3 id="analysisTitle" style="margin:0;">2026年9月 分析</h3>
+                <button class="btn-icon" onclick="changeAnalysisMonth(1)">下月 ▶</button>
+            </div>
+            <div id="analysisContent" style="margin-top: 15px;"></div>
         </div>
     </div>
 </div>
@@ -343,8 +369,9 @@
     let currentTxType = 'expense';
     let selectedCategory = categories[0]?.id || '';
     
-    // 月曆檢視狀態
+    // 月曆與分析頁面狀態
     let viewDate = new Date();
+    let analysisDate = new Date();
     let selectedDateStr = new Date().toISOString().slice(0, 10);
 
     document.getElementById('txDate').valueAsDate = new Date();
@@ -426,7 +453,6 @@
         }
 
         if (editId) {
-            // 編輯模式：先還原舊交易對帳戶的影響
             revertTransactionBalance(parseInt(editId));
             transactions = transactions.filter(t => t.id !== parseInt(editId));
         }
@@ -438,7 +464,7 @@
             } else {
                 if (acc.balance < amount) {
                     alert('帳戶餘額不足！');
-                    if(editId) renderAll(); // 失敗時還原
+                    if(editId) renderAll();
                     return;
                 }
                 acc.balance -= amount;
@@ -509,7 +535,6 @@
         document.getElementById('txAmount').value = t.amount;
         document.getElementById('txTitle').value = t.title;
         
-        // 設定類型
         currentTxType = t.type;
         document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active', 'expense', 'income', 'transfer'));
         if(t.type === 'expense') document.querySelector('.type-btn.expense').classList.add('active', 'expense');
@@ -581,6 +606,11 @@
         renderCalendar();
     }
 
+    function changeAnalysisMonth(direction) {
+        analysisDate.setMonth(analysisDate.getMonth() + direction);
+        renderAnalysis();
+    }
+
     function renderCalendar() {
         let year = viewDate.getFullYear();
         let month = viewDate.getMonth();
@@ -600,7 +630,6 @@
         let totalDays = new Date(year, month + 1, 0).getDate();
         let prevTotalDays = new Date(year, month, 0).getDate();
 
-        // 填入上個月尾數
         for (let i = firstDayIndex - 1; i >= 0; i--) {
             let dayNum = prevTotalDays - i;
             let cell = document.createElement('div');
@@ -609,7 +638,6 @@
             grid.appendChild(cell);
         }
 
-        // 當月日期
         for (let i = 1; i <= totalDays; i++) {
             let mStr = String(month + 1).padStart(2, '0');
             let dStr = String(i).padStart(2, '0');
@@ -618,7 +646,6 @@
             let cell = document.createElement('div');
             cell.className = `cal-cell ${dateStr === selectedDateStr ? 'selected' : ''}`;
             
-            // 檢查當天是否有花費
             let hasExpense = transactions.some(t => t.date === dateStr && t.type === 'expense');
 
             cell.innerHTML = `<span>${i}</span>${hasExpense ? '<div class="has-dot"></div>' : ''}`;
@@ -674,6 +701,57 @@
         });
     }
 
+    function renderAnalysis() {
+        let year = analysisDate.getFullYear();
+        let month = analysisDate.getMonth();
+        let monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+        
+        document.getElementById('analysisTitle').innerText = `${year}年${month + 1}月 分析`;
+
+        let monthTxs = transactions.filter(t => t.date.startsWith(monthPrefix));
+        let totalExpense = monthTxs.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+        let totalIncome = monthTxs.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+
+        // 統計各分類金額
+        let catStats = {};
+        monthTxs.filter(t => t.type === 'expense').forEach(t => {
+            catStats[t.categoryId] = (catStats[t.categoryId] || 0) + t.amount;
+        });
+
+        let contentEl = document.getElementById('analysisContent');
+        let html = `
+            <p>💰 本月總支出：<strong class="expense">-$${totalExpense}</strong></p>
+            <p>💵 本月總收入：<strong class="income">+$${totalIncome}</strong></p>
+            <hr style="border:0; border-top:1px solid #444; margin:15px 0;">
+            <h4 style="color:var(--accent-color); margin-bottom:10px;">🏷️ 分類支出佔比</h4>
+        `;
+
+        if (totalExpense === 0) {
+            html += '<p style="color:#888; text-align:center;">這個月沒有支出紀錄</p>';
+        } else {
+            // 排序分類
+            let sortedCats = Object.keys(catStats).sort((a, b) => catStats[b] - catStats[a]);
+            sortedCats.forEach(catId => {
+                let cat = categories.find(c => c.id === catId) || { name: '其他', icon: '🔄' };
+                let amount = catStats[catId];
+                let percent = Math.round((amount / totalExpense) * 100);
+
+                html += `
+                    <div class="stat-bar-container">
+                        <div class="stat-bar-info">
+                            <span>${cat.icon} ${cat.name}</span>
+                            <span>$${amount} (${percent}%)</span>
+                        </div>
+                        <div class="stat-bar-bg">
+                            <div class="stat-bar-fill" style="width: ${percent}%;"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        contentEl.innerHTML = html;
+    }
+
     function renderAll() {
         localStorage.setItem('my_accounts', JSON.stringify(accounts));
         localStorage.setItem('my_categories', JSON.stringify(categories));
@@ -683,12 +761,9 @@
         renderAccountSelectors();
         renderCategoryGrid();
         renderCalendar();
+        renderAnalysis();
 
-        // 智慧日期計算：取得真實今天、本週起訖、本月
         let now = new Date();
-        let todayStr = now.toISOString().slice(0, 10);
-        
-        // 計算本週週一到週日
         let dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
         let monday = new Date(now);
         monday.setDate(now.getDate() - dayOfWeek + 1);
@@ -715,7 +790,6 @@
                 }
             }
 
-            // 只在首頁顯示最近 10 筆
             if(listEl.children.length < 10) {
                 let cat = categories.find(c => c.id === t.categoryId) || { name: '其他', icon: '🔄' };
                 let acc = accounts.find(a => a.id === t.accountId) || { name: '' };
@@ -744,7 +818,6 @@
         document.getElementById('monthlySpent').innerText = '$' + monthlySpent;
         document.getElementById('budgetInput').value = weeklyBudget;
 
-        // 淨資產計算
         let netAssets = 0;
         let totalDebt = 0;
         let accListUI = document.getElementById('accountListUI');
@@ -764,7 +837,6 @@
         });
         document.getElementById('netAssets').innerText = '$' + (netAssets - totalDebt);
 
-        // 帳戶管理清單
         let manageAcc = document.getElementById('manageAccountList');
         manageAcc.innerHTML = '';
         accounts.forEach(acc => {
@@ -774,15 +846,6 @@
                              <button class="btn-icon" onclick="deleteAccount('${acc.id}')">刪除</button>`;
             manageAcc.appendChild(div);
         });
-
-        // 分析頁面
-        document.getElementById('periodStats').innerHTML = `
-            <p>📅 本週區間：${mondayStr} ~ ${sundayStr}</p>
-            <p>本週總支出：<strong>$${weeklySpent}</strong></p>
-            <hr style="border:0; border-top:1px solid #444; margin:10px 0;">
-            <p>📅 本月月份：${currentMonthPrefix}</p>
-            <p>本月總支出：<strong>$${monthlySpent}</strong></p>
-        `;
     }
 
     renderAll();
