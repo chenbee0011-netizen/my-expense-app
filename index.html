@@ -202,7 +202,7 @@
             margin-top: 2px;
         }
 
-        /* 分類統計長條圖 */
+        /* 分類與帳戶統計長條圖 */
         .stat-bar-container {
             margin-bottom: 12px;
         }
@@ -758,6 +758,12 @@
             catStats[t.categoryId] = (catStats[t.categoryId] || 0) + t.amount;
         });
 
+        // 統計各帳戶本月開銷 (包含支出與轉出)
+        let accStats = {};
+        monthTxs.filter(t => t.type === 'expense' || t.type === 'transfer').forEach(t => {
+            accStats[t.accountId] = (accStats[t.accountId] || 0) + t.amount;
+        });
+
         let contentEl = document.getElementById('analysisContent');
         let html = `
             <p>💰 本月總支出：<strong class="expense">-$${totalExpense}</strong></p>
@@ -767,7 +773,7 @@
         `;
 
         if (totalExpense === 0) {
-            html += '<p style="color:#888; text-align:center;">這個月沒有支出紀錄</p>';
+            html += '<p style="color:#888; text-align:center; margin-bottom:15px;">這個月沒有支出紀錄</p>';
         } else {
             let sortedCats = Object.keys(catStats).sort((a, b) => catStats[b] - catStats[a]);
             sortedCats.forEach(catId => {
@@ -788,6 +794,36 @@
                 `;
             });
         }
+
+        // 額外加入：各帳戶每個月開銷統計區塊
+        html += `
+            <hr style="border:0; border-top:1px solid #444; margin:15px 0;">
+            <h4 style="color:var(--accent-color); margin-bottom:10px;">💳 各帳戶本月開銷</h4>
+        `;
+
+        let sortedAccs = Object.keys(accStats).sort((a, b) => accStats[b] - accStats[a]);
+        if (sortedAccs.length === 0) {
+            html += '<p style="color:#888; text-align:center;">這個月沒有帳戶支出或轉帳紀錄</p>';
+        } else {
+            sortedAccs.forEach(accId => {
+                let acc = accounts.find(a => a.id === accId) || { name: '未知帳戶', type: 'asset' };
+                let amount = accStats[accId];
+                let accPercent = totalExpense > 0 ? Math.min(100, Math.round((amount / totalExpense) * 100)) : 0;
+
+                html += `
+                    <div class="stat-bar-container">
+                        <div class="stat-bar-info">
+                            <span>💳 ${acc.name} (${acc.type === 'credit' ? '信用卡' : '資產'})</span>
+                            <span class="expense">-$${amount}</span>
+                        </div>
+                        <div class="stat-bar-bg">
+                            <div class="stat-bar-fill" style="width: ${accPercent}%; background-color: var(--credit-color);"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
         contentEl.innerHTML = html;
     }
 
