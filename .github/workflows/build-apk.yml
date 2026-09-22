@@ -1,4 +1,4 @@
-name: Build HTML to APK
+name: Build App APK
 
 on:
   push:
@@ -18,43 +18,15 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 使用 Bubblewrap 產生 Android 專案
+      - name: 編譯 Android App 容器
         run: |
-          npm install -g @bubblewrap/cli
-          # 這裡會將你的 index.html 自動打包成 TWA / APK 結構
-          cat << 'EOF' > twa-manifest.json
-          {
-            "packageId": "com.myexpense.app",
-            "host": "chenbee0011-netizen.github.io",
-            "name": "我的質感記帳",
-            "shortName": "記帳App",
-            "startUrl": "/my-expense-app/",
-            "display": "standalone",
-            "themeColor": "#121212",
-            "backgroundColor": "#121212",
-            "iconUrl": "https://via.placeholder.com/512",
-            "maskableIconUrl": "https://via.placeholder.com/512",
-            "splashScreenImage": "https://via.placeholder.com/512",
-            "shortcuts": [],
-            "generatorApp": "bubblewrap-cli",
-            "webManifestUrl": "",
-            "signingKey": {
-              "path": "android.keystore",
-              "alias": "android"
-            },
-            "minSdkVersion": 21,
-            "targetSdkVersion": 33,
-            "compileSdkVersion": 33,
-            "appVersionName": "1.0",
-            "appVersionCode": 1,
-            "enableNotifications": false,
-            "webManifest": null
-          }
-          EOF
-
-      - name: 建立除錯版 APK
-        run: |
-          # 這裡利用 GitHub Actions 模擬 Android 環境輸出 APK
-          mkdir -p output
-          # 建立一個簡易打包動作 (使用 Webview 包裝器)
-          echo "Building artifact..."
+          echo "準備將網頁封裝為獨立 App..."
+          mkdir -p app-build
+          cp index.html app-build/
+          
+      - name: 建立 Android 封裝結構
+        uses: Onunok/html-to-apk-action@v1
+        with:
+          html-file: 'index.html'
+          app-name: '我的質感記帳'
+          package-name: 'com.myexpense.app'
