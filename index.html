@@ -19,7 +19,7 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-color); margin: 0; padding: 15px; color: var(--text-main); }
         .container { max-width: 500px; margin: 0 auto; padding-bottom: 70px; }
         
-        /* 底部/頂部頁籤選單 */
+        /* 導覽列 */
         .tabs { display: flex; justify-content: space-around; background: var(--card-bg); border-radius: 12px; padding: 8px; margin-bottom: 20px; border: 1px solid var(--card-border); position: sticky; top: 10px; z-index: 100; }
         .tab-btn { background: none; border: none; color: var(--text-sub); font-size: 0.9rem; font-weight: bold; cursor: pointer; padding: 8px 10px; border-radius: 8px; }
         .tab-btn.active { background: var(--accent-gold); color: #000; }
@@ -39,6 +39,12 @@
         .type-btn.active.income { background: var(--accent-green); color: #fff; border-color: var(--accent-green); }
         .type-btn.active.transfer { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
 
+        /* 圖示分類選擇網格 */
+        .category-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+        .cat-item { background: #2a2a2a; border: 2px solid #444; border-radius: 12px; padding: 12px 5px; text-align: center; cursor: pointer; color: var(--text-main); font-size: 0.85rem; }
+        .cat-item.selected { border-color: var(--accent-gold); background: #332b1a; }
+        .cat-icon { font-size: 1.5rem; margin-bottom: 4px; display: block; }
+
         button.submit-btn { background: var(--accent-gold); color: #000; border: none; padding: 14px; width: 100%; border-radius: 8px; font-size: 1rem; font-weight: bold; margin-top: 20px; cursor: pointer; }
         button.submit-btn:active { opacity: 0.8; }
 
@@ -57,15 +63,16 @@
 <body>
 
 <div class="container">
-    <!-- 頂部頁籤 -->
+    <!-- 導覽列 -->
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('home')">首頁</button>
         <button class="tab-btn" onclick="switchTab('add')">記一筆</button>
         <button class="tab-btn" onclick="switchTab('accounts')">帳戶</button>
+        <button class="tab-btn" onclick="switchTab('categories')">分類</button>
         <button class="tab-btn" onclick="switchTab('charts')">圖表</button>
     </div>
 
-    <!-- 1. 首頁與預算控制台 -->
+    <!-- 1. 首頁 -->
     <div id="home" class="section active">
         <h2>📊 本週預算控制台</h2>
         <div class="card" id="budgetCard">載入中...</div>
@@ -91,31 +98,10 @@
             <label>日期：</label>
             <input type="date" id="date">
 
-            <!-- 支出分類 -->
-            <div id="expenseCategoryGroup">
-                <label>支出一級分類：</label>
-                <select id="expensePrimary">
-                    <option value="餐飲">餐飲</option>
-                    <option value="交通">交通</option>
-                    <option value="生活">生活</option>
-                    <option value="購物">購物</option>
-                    <option value="娛樂">娛樂</option>
-                    <option value="儲蓄">儲蓄</option>
-                </select>
-                <label>二級消費細項：</label>
-                <input type="text" id="expenseSub" placeholder="例如：早餐、午餐、咖啡、手搖飲">
-            </div>
-
-            <!-- 收入分類 -->
-            <div id="incomeCategoryGroup" style="display:none;">
-                <label>收入分類：</label>
-                <select id="incomeCategory">
-                    <option value="薪資">薪資</option>
-                    <option value="獎金">獎金</option>
-                    <option value="投資">投資</option>
-                    <option value="利息">利息</option>
-                    <option value="其他">其他</option>
-                </select>
+            <!-- 支出/收入 分類選單 (帶Emoji圖示) -->
+            <div id="categorySelectionGroup">
+                <label>選擇分類：</label>
+                <div id="categoryGrid" class="category-grid"></div>
             </div>
 
             <!-- 轉帳群組 -->
@@ -142,7 +128,7 @@
         </div>
     </div>
 
-    <!-- 3. 帳戶管理頁面 (自訂名稱與初始金額) -->
+    <!-- 3. 帳戶管理 -->
     <div id="accounts" class="section">
         <h2>💳 新增帳戶</h2>
         <div class="card">
@@ -152,11 +138,30 @@
             <input type="number" id="newAccountInitial" placeholder="例如：1000">
             <button onclick="addAccount()" class="submit-btn" style="margin-top:15px;">新增帳戶</button>
         </div>
-        <h2>現有帳戶列表與資產</h2>
+        <h2>現有帳戶列表</h2>
         <div class="card" id="accountListCard">載入中...</div>
     </div>
 
-    <!-- 4. 圖表統計分頁 -->
+    <!-- 4. 自訂分類管理 (用 Emoji + 自訂名稱) -->
+    <div id="categories" class="section">
+        <h2>🏷️ 新增自訂分類</h2>
+        <div class="card">
+            <label>分類類型：</label>
+            <select id="newCatType">
+                <option value="支出">支出分類</option>
+                <option value="收入">收入分類</option>
+            </select>
+            <label>圖示 (請輸入手機 Emoji，例如 🍔 🚗)：</label>
+            <input type="text" id="newCatIcon" placeholder="🍔" maxlength="2" style="font-size: 1.5rem; text-align: center;">
+            <label>分類名稱：</label>
+            <input type="text" id="newCatName" placeholder="例如：餐飲、交通">
+            <button onclick="addCategory()" class="submit-btn" style="margin-top:15px;">新增分類</button>
+        </div>
+        <h2>現有分類列表</h2>
+        <div class="card" id="categoryListCard">載入中...</div>
+    </div>
+
+    <!-- 5. 圖表統計 -->
     <div id="charts" class="section">
         <h2>📈 本週開銷統計</h2>
         <div class="card" id="weekChartCard">載入中...</div>
@@ -174,8 +179,18 @@
         { name: "中國信託", initial: 5000 },
         { name: "國泰世華", initial: 10000 }
     ];
+    let categories = JSON.parse(localStorage.getItem('app_categories')) || [
+        { type: "支出", icon: "🍜", name: "餐飲" },
+        { type: "支出", icon: "🚗", name: "交通" },
+        { type: "支出", icon: "🏠", name: "生活" },
+        { type: "支出", icon: "🛍️", name: "購物" },
+        { type: "支出", icon: "🎉", name: "娛樂" },
+        { type: "收入", icon: "💰", name: "薪資" },
+        { type: "收入", icon: "📈", name: "投資" }
+    ];
     let weeklyBudget = Number(localStorage.getItem('app_weekly_budget')) || 3000;
     let currentType = "支出";
+    let selectedCategory = "";
 
     document.getElementById('date').valueAsDate = new Date();
 
@@ -193,10 +208,57 @@
         const btn = event.target;
         btn.classList.add('active', type === '支出' ? 'expense' : type === '收入' ? 'income' : 'transfer');
 
-        document.getElementById('expenseCategoryGroup').style.display = (type === '支出') ? 'block' : 'none';
-        document.getElementById('incomeCategoryGroup').style.display = (type === '收入') ? 'block' : 'none';
-        document.getElementById('transferGroup').style.display = (type === '轉帳') ? 'block' : 'none';
+        document.getElementById('categorySelectionGroup').style.display = (type === '轉帳') ? 'none' : 'block';
         document.getElementById('accountGroup').style.display = (type === '轉帳') ? 'none' : 'block';
+        document.getElementById('transferGroup').style.display = (type === '轉帳') ? 'block' : 'none';
+        renderCategoryGrid();
+    }
+
+    function renderCategoryGrid() {
+        const grid = document.getElementById('categoryGrid');
+        const filtered = categories.filter(c => c.type === currentType);
+        if (filtered.length > 0 && (!selectedCategory || !filtered.some(c => c.name === selectedCategory))) {
+            selectedCategory = filtered[0].name;
+        }
+
+        grid.innerHTML = filtered.map(c => `
+            <div class="cat-item ${selectedCategory === c.name ? 'selected' : ''}" onclick="selectCategory('${c.name}')">
+                <span class="cat-icon">${c.icon}</span>
+                <span>${c.name}</span>
+            </div>
+        `).join('');
+    }
+
+    function selectCategory(name) {
+        selectedCategory = name;
+        renderCategoryGrid();
+    }
+
+    function addCategory() {
+        const type = document.getElementById('newCatType').value;
+        const icon = document.getElementById('newCatIcon').value.trim() || "📌";
+        const name = document.getElementById('newCatName').value.trim();
+
+        if (name && !categories.some(c => c.type === type && c.name === name)) {
+            categories.push({ type, icon, name });
+            localStorage.setItem('app_categories', JSON.stringify(categories));
+            document.getElementById('newCatName').value = '';
+            document.getElementById('newCatIcon').value = '';
+            render();
+            alert('分類新增成功！');
+        } else {
+            alert('請輸入有效或未重複的分類名稱。');
+        }
+    }
+
+    function deleteCategory(type, name) {
+        if (categories.filter(c => c.type === type).length <= 1) {
+            alert('該類型至少需要保留一個分類！');
+            return;
+        }
+        categories = categories.filter(c => !(c.type === type && c.name === name));
+        localStorage.setItem('app_categories', JSON.stringify(categories));
+        render();
     }
 
     function updateBudget() {
@@ -256,12 +318,8 @@
                 alert('轉出與轉入帳戶不能相同！');
                 return;
             }
-        } else if (currentType === '收入') {
-            newRecord.category = document.getElementById('incomeCategory').value;
-            newRecord.account = document.getElementById('account').value;
         } else {
-            newRecord.primary = document.getElementById('expensePrimary').value;
-            newRecord.sub = document.getElementById('expenseSub').value || '一般';
+            newRecord.category = selectedCategory;
             newRecord.account = document.getElementById('account').value;
         }
 
@@ -270,7 +328,6 @@
         
         document.getElementById('amount').value = '';
         document.getElementById('note').value = '';
-        document.getElementById('expenseSub').value = '';
         switchTab('home');
         document.querySelectorAll('.tab-btn')[0].classList.add('active');
     }
@@ -282,7 +339,6 @@
     }
 
     function render() {
-        // 更新下拉選單
         const accNames = accounts.map(a => a.name);
         ['account', 'fromAccount', 'toAccount'].forEach(id => {
             const el = document.getElementById(id);
@@ -291,7 +347,8 @@
             }
         });
 
-        // 計算各帳戶餘額 (初始金額 + 收入 - 支出 ± 轉帳)
+        renderCategoryGrid();
+
         let balances = {};
         accounts.forEach(a => balances[a.name] = a.initial);
 
@@ -320,7 +377,7 @@
             }
         });
 
-        // 1. 渲染預算控制台 (可更改)
+        // 預算控制台
         let remaining = weeklyBudget - totalExpense;
         document.getElementById('budgetCard').innerHTML = `
             本週已花費總額：$${totalExpense}<br>
@@ -332,7 +389,7 @@
             </div>
         `;
 
-        // 2. 渲染帳戶資產總覽
+        // 帳戶資產
         let totalAsset = 0;
         let accHtml = '';
         accounts.forEach(a => {
@@ -343,7 +400,7 @@
         accHtml += `<br><b>總資產合計：$${totalAsset}</b>`;
         document.getElementById('accountSummaryCard').innerHTML = accHtml;
 
-        // 3. 渲染帳戶管理頁面清單
+        // 帳戶管理清單
         document.getElementById('accountListCard').innerHTML = accounts.map(a => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #333;">
                 <div><b>${a.name}</b><br><span style="font-size:0.8rem; color:var(--text-sub);">初始金額: $${a.initial} | 目前餘額: $${balances[a.name]}</span></div>
@@ -351,13 +408,23 @@
             </div>
         `).join('');
 
-        // 4. 渲染近期明細
+        // 分類管理清單
+        document.getElementById('categoryListCard').innerHTML = categories.map(c => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #333;">
+                <div><span style="font-size:1.2rem; margin-right:8px;">${c.icon}</span><b>[${c.type}] ${c.name}</b></div>
+                <button onclick="deleteCategory('${c.type}', '${c.name}')" style="background:#e74c3c; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer;">刪除</button>
+            </div>
+        `).join('');
+
+        // 近期明細
         const listEl = document.getElementById('recordListCard');
         if (records.length === 0) {
             listEl.innerHTML = '尚無記帳記錄';
         } else {
             listEl.innerHTML = records.slice(0, 15).map(r => {
-                let desc = r.type === '轉帳' ? `轉帳 (${r.from} ➔ ${r.to})` : r.type === '收入' ? `[收入] ${r.category} (${r.account})` : `[${r.primary}] ${r.sub} (${r.account})`;
+                let catObj = categories.find(c => c.name === r.category);
+                let icon = catObj ? catObj.icon : '📌';
+                let desc = r.type === '轉帳' ? `轉帳 (${r.from} ➔ ${r.to})` : `${icon} ${r.category} (${r.account})`;
                 let amtClass = r.type === '收入' ? 'amount-income' : r.type === '支出' ? 'amount-expense' : 'amount-transfer';
                 let sign = r.type === '收入' ? '+' : r.type === '支出' ? '-' : '⇄';
                 return `
@@ -375,25 +442,22 @@
             }).join('');
         }
 
-        // 5. 渲染圖表分頁 (週與月統計)
+        // 圖表統計
         let weekCategories = {};
         let monthCategories = {};
         let weekTotal = 0;
         let monthTotal = 0;
-
-        const currentMonthStr = new Date().toISOString().slice(0, 7); // YYYY-MM
+        const currentMonthStr = new Date().toISOString().slice(0, 7);
 
         records.forEach(r => {
             if (r.type === '支出') {
-                // 本週統計
                 if (r.date >= mondayStr) {
                     weekTotal += r.amount;
-                    weekCategories[r.primary] = (weekCategories[r.primary] || 0) + r.amount;
+                    weekCategories[r.category] = (weekCategories[r.category] || 0) + r.amount;
                 }
-                // 本月統計
                 if (r.date.startsWith(currentMonthStr)) {
                     monthTotal += r.amount;
-                    monthCategories[r.primary] = (monthCategories[r.primary] || 0) + r.amount;
+                    monthCategories[r.category] = (monthCategories[r.category] || 0) + r.amount;
                 }
             }
         });
