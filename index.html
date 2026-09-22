@@ -18,19 +18,39 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
-            padding: 20px;
+            padding: 15px;
             display: flex;
             justify-content: center;
         }
         .container {
             width: 100%;
             max-width: 400px;
+            padding-bottom: 60px;
         }
-        h1 {
-            text-align: center;
-            color: var(--accent-color);
-            font-size: 1.5rem;
+        /* 頂部導航列 */
+        .nav-tabs {
+            display: flex;
+            justify-content: space-around;
+            background-color: var(--card-bg);
+            padding: 10px;
+            border-radius: 12px;
             margin-bottom: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .nav-tab {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 0.9rem;
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .nav-tab.active {
+            background-color: var(--accent-color);
+            color: #121212;
+            font-weight: bold;
         }
         .card {
             background-color: var(--card-bg);
@@ -38,6 +58,10 @@
             border-radius: 12px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             margin-bottom: 20px;
+        }
+        h2, h3 {
+            color: var(--accent-color);
+            margin-top: 0;
         }
         input, select {
             width: 100%;
@@ -54,13 +78,33 @@
             border-color: var(--accent-color);
             outline: none;
         }
-        
-        /* 自定義計算機彈窗樣式 */
+        .submit-btn {
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-top: 10px;
+        }
+        .submit-btn:active {
+            opacity: 0.8;
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        /* 計算機彈窗樣式 */
         .calc-modal {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.7);
+            background-color: rgba(0,0,0,0.8);
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -71,7 +115,7 @@
             border-radius: 16px;
             width: 90%;
             max-width: 320px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.8);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.9);
             border: 1px solid #444;
         }
         .calc-display {
@@ -81,7 +125,7 @@
             padding: 15px;
             margin-bottom: 15px;
             border-radius: 8px;
-            font-size: 1.5rem;
+            font-size: 1.6rem;
             text-align: right;
             letter-spacing: 1px;
             min-height: 30px;
@@ -100,7 +144,6 @@
             font-size: 1.2rem;
             border-radius: 8px;
             cursor: pointer;
-            transition: background 0.1s;
         }
         .calc-btn:active {
             background-color: #555;
@@ -122,27 +165,6 @@
             margin-top: 5px;
             font-weight: bold;
         }
-
-        button.submit-btn {
-            background-color: var(--success-color);
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 1rem;
-            margin-top: 8px;
-        }
-        button.submit-btn:active {
-            opacity: 0.8;
-        }
-        .transaction-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
         .transaction-item {
             background-color: #2a2a2a;
             padding: 12px 15px;
@@ -162,36 +184,86 @@
             font-size: 1.2rem;
             margin-left: 10px;
         }
-        .delete-btn:hover {
-            color: var(--danger-color);
-        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>💰 質感記帳</h1>
-
-    <!-- 記帳輸入卡片 -->
-    <div class="card">
-        <input type="text" id="title" placeholder="項目名稱 (例如: 午餐)">
-        <!-- 點擊此金額欄位才會叫出計算機 -->
-        <input type="text" id="amountDisplay" placeholder="點擊輸入金額" readonly onclick="openCalc()">
-        
-        <select id="type">
-            <option value="expense">支出 (-)</option>
-            <option value="income">收入 (+)</option>
-        </select>
-
-        <button class="submit-btn" onclick="addTransaction()">新增紀錄</button>
+    <!-- 頂部多頁籤導航 -->
+    <div class="nav-tabs">
+        <button class="nav-tab active" onclick="switchPage('home', this)">首頁</button>
+        <button class="nav-tab" onclick="switchPage('add', this)">記一筆</button>
+        <button class="nav-tab" onclick="switchPage('accounts', this)">帳戶</button>
+        <button class="nav-tab" onclick="switchPage('categories', this)">分類</button>
+        <button class="nav-tab" onclick="switchPage('charts', this)">圖表</button>
     </div>
 
-    <!-- 紀錄列表卡片 -->
-    <div class="card">
-        <h3 style="margin-top:0; font-size:1.1rem; color:#aaa;">近期明細</h3>
-        <ul id="transactionList" class="transaction-list">
-            <!-- 動態生成 -->
-        </ul>
+    <!-- 首頁 -->
+    <div id="home" class="page active">
+        <div class="card">
+            <h2>📊 本週預算控制台</h2>
+            <p>本週已花費總額：<span id="weeklySpent">$0</span></p>
+            <p>本週預算剩餘：<span id="weeklyBudgetRemain">$3000</span></p>
+            <p>今日已花費：<span id="todaySpent">$0</span></p>
+            <input type="number" id="budgetInput" value="3000" placeholder="設定預算">
+            <button class="submit-btn" onclick="updateBudget()">修改預算</button>
+        </div>
+
+        <div class="card">
+            <h3>💰 帳戶資產總覽</h3>
+            <p>現金錢包 (初始 $1000) : <span id="accCash">$1000</span></p>
+            <p>中國信託 (初始 $5000) : <span id="accCTBC">$5000</span></p>
+            <p>國泰世華 (初始 $10000) : <span id="accCathay">$10000</span></p>
+            <p><strong>總資產合計：<span id="totalAssets">$16000</span></strong></p>
+        </div>
+
+        <div class="card">
+            <h3>📝 近期記帳明細</h3>
+            <ul id="transactionList" style="list-style: none; padding: 0; margin: 0;">
+                <!-- 動態生成 -->
+            </ul>
+        </div>
+    </div>
+
+    <!-- 記一筆頁面 (內建計算機) -->
+    <div id="add" class="page">
+        <div class="card">
+            <h2>✍️ 新增記帳</h2>
+            <input type="text" id="title" placeholder="項目名稱 (例如: 午餐)">
+            
+            <!-- 點擊此金額欄位會彈出計算機 -->
+            <input type="text" id="amountDisplay" placeholder="點擊輸入金額 (可加減)" readonly onclick="openCalc()">
+            
+            <select id="type">
+                <option value="expense">支出 (-)</option>
+                <option value="income">收入 (+)</option>
+            </select>
+            <button class="submit-btn" onclick="addTransaction()">確認新增</button>
+        </div>
+    </div>
+
+    <!-- 帳戶頁面 -->
+    <div id="accounts" class="page">
+        <div class="card">
+            <h2>💳 帳戶管理</h2>
+            <p>在此管理你的現金與銀行帳戶餘額。</p>
+        </div>
+    </div>
+
+    <!-- 分類頁面 -->
+    <div id="categories" class="page">
+        <div class="card">
+            <h2>🏷️ 消費分類</h2>
+            <p>餐飲、交通、娛樂、購物等分類管理。</p>
+        </div>
+    </div>
+
+    <!-- 圖表頁面 -->
+    <div id="charts" class="page">
+        <div class="card">
+            <h2>📈 收支圖表分析</h2>
+            <p>長條圖與圓餅圖分析功能建置中。</p>
+        </div>
     </div>
 </div>
 
@@ -226,6 +298,15 @@
 </div>
 
 <script>
+    // 頁籤切換邏輯
+    function switchPage(pageId, btn) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    // 計算機相關邏輯
     let currentExpression = "0";
     let finalAmount = 0;
 
@@ -287,8 +368,21 @@
         }
     }
 
-    // 記帳核心邏輯
+    // 記帳與資料邏輯
     let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+    let weeklyBudget = localStorage.getItem('weeklyBudget') ? parseFloat(localStorage.getItem('weeklyBudget')) : 3000;
+
+    function updateBudget() {
+        let val = parseFloat(document.getElementById('budgetInput').value);
+        if (!isNaN(val) && val >= 0) {
+            weeklyBudget = val;
+            localStorage.setItem('weeklyBudget', weeklyBudget);
+            renderAll();
+            alert('預算已更新！');
+        } else {
+            alert('請輸入有效的預算金額！');
+        }
+    }
 
     function addTransaction() {
         let title = document.getElementById('title').value.trim();
@@ -307,25 +401,36 @@
         };
 
         transactions.push(transaction);
-        saveAndRender();
+        renderAll();
 
-        // 清空欄位
+        // 清空輸入並切回首頁
         document.getElementById('title').value = '';
         document.getElementById('amountDisplay').value = '';
         finalAmount = 0;
+        
+        // 自動切換回首頁看結果
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('home').classList.add('active');
+        document.querySelectorAll('.nav-tab')[0].classList.add('active');
     }
 
     function deleteTransaction(id) {
         transactions = transactions.filter(t => t.id !== id);
-        saveAndRender();
+        renderAll();
     }
 
-    function saveAndRender() {
+    function renderAll() {
         localStorage.setItem('transactions', JSON.stringify(transactions));
+        
+        // 計算總花費
+        let totalSpent = 0;
         const listEl = document.getElementById('transactionList');
         listEl.innerHTML = '';
 
         transactions.slice().reverse().forEach(t => {
+            if (t.type === 'expense') totalSpent += t.amount;
+
             const li = document.createElement('li');
             li.className = 'transaction-item';
             li.innerHTML = `
@@ -337,9 +442,16 @@
             `;
             listEl.appendChild(li);
         });
+
+        // 更新預算面板
+        document.getElementById('weeklySpent').innerText = '$' + totalSpent;
+        document.getElementById('weeklyBudgetRemain').innerText = '$' + (weeklyBudget - totalSpent);
+        document.getElementById('budgetInput').value = weeklyBudget;
+        document.getElementById('totalAssets').innerText = '$' + (16000 - totalSpent); // 範例資產連動
     }
 
-    saveAndRender();
+    // 初始化渲染
+    renderAll();
 </script>
 
 </body>
