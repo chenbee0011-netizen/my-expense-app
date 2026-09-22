@@ -17,11 +17,11 @@
             --accent-blue: #3498db;
         }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-color); margin: 0; padding: 15px; color: var(--text-main); }
-        .container { max-width: 500px; margin: 0 auto; padding-bottom: 50px; }
+        .container { max-width: 500px; margin: 0 auto; padding-bottom: 70px; }
         
-        /* 頁籤選單 */
-        .tabs { display: flex; justify-content: space-around; background: var(--card-bg); border-radius: 12px; padding: 10px; margin-bottom: 20px; border: 1px solid var(--card-border); }
-        .tab-btn { background: none; border: none; color: var(--text-sub); font-size: 1rem; font-weight: bold; cursor: pointer; padding: 8px 12px; border-radius: 8px; }
+        /* 底部/頂部頁籤選單 */
+        .tabs { display: flex; justify-content: space-around; background: var(--card-bg); border-radius: 12px; padding: 8px; margin-bottom: 20px; border: 1px solid var(--card-border); position: sticky; top: 10px; z-index: 100; }
+        .tab-btn { background: none; border: none; color: var(--text-sub); font-size: 0.9rem; font-weight: bold; cursor: pointer; padding: 8px 10px; border-radius: 8px; }
         .tab-btn.active { background: var(--accent-gold); color: #000; }
 
         .section { display: none; }
@@ -51,6 +51,7 @@
 
         .del-btn { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 0.9rem; padding: 5px; }
         .flex-row { display: flex; gap: 10px; }
+        .budget-input-group { display: flex; gap: 10px; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -58,9 +59,10 @@
 <div class="container">
     <!-- 頂部頁籤 -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('home')">首頁總覽</button>
+        <button class="tab-btn active" onclick="switchTab('home')">首頁</button>
         <button class="tab-btn" onclick="switchTab('add')">記一筆</button>
-        <button class="tab-btn" onclick="switchTab('accounts')">帳戶管理</button>
+        <button class="tab-btn" onclick="switchTab('accounts')">帳戶</button>
+        <button class="tab-btn" onclick="switchTab('charts')">圖表</button>
     </div>
 
     <!-- 1. 首頁與預算控制台 -->
@@ -89,9 +91,10 @@
             <label>日期：</label>
             <input type="date" id="date">
 
-            <div id="normalCategoryGroup">
-                <label>一級分類：</label>
-                <select id="primaryCategory">
+            <!-- 支出分類 -->
+            <div id="expenseCategoryGroup">
+                <label>支出一級分類：</label>
+                <select id="expensePrimary">
                     <option value="餐飲">餐飲</option>
                     <option value="交通">交通</option>
                     <option value="生活">生活</option>
@@ -99,19 +102,31 @@
                     <option value="娛樂">娛樂</option>
                     <option value="儲蓄">儲蓄</option>
                 </select>
-
                 <label>二級消費細項：</label>
-                <input type="text" id="subCategory" placeholder="例如：早餐、午餐、咖啡、手搖飲">
+                <input type="text" id="expenseSub" placeholder="例如：早餐、午餐、咖啡、手搖飲">
             </div>
 
+            <!-- 收入分類 -->
+            <div id="incomeCategoryGroup" style="display:none;">
+                <label>收入分類：</label>
+                <select id="incomeCategory">
+                    <option value="薪資">薪資</option>
+                    <option value="獎金">獎金</option>
+                    <option value="投資">投資</option>
+                    <option value="利息">利息</option>
+                    <option value="其他">其他</option>
+                </select>
+            </div>
+
+            <!-- 轉帳群組 -->
             <div id="transferGroup" style="display:none;">
                 <label>轉出帳戶：</label>
                 <select id="fromAccount"></select>
-
                 <label>轉入帳戶：</label>
                 <select id="toAccount"></select>
             </div>
 
+            <!-- 一般收支帳戶 -->
             <div id="accountGroup">
                 <label>支付/收支帳戶：</label>
                 <select id="account"></select>
@@ -121,31 +136,44 @@
             <input type="number" id="amount" placeholder="請輸入金額">
 
             <label>備註說明：</label>
-            <input type="text" id="note" placeholder="例如：雞腿飯、跟朋友聚餐">
+            <input type="text" id="note" placeholder="例如：雞腿飯、月薪入帳">
 
             <button class="submit-btn" onclick="addRecord()">確認儲存</button>
         </div>
     </div>
 
-    <!-- 3. 帳戶管理頁面 (可自由新增) -->
+    <!-- 3. 帳戶管理頁面 (自訂名稱與初始金額) -->
     <div id="accounts" class="section">
-        <h2>💳 自訂支付帳戶</h2>
+        <h2>💳 新增帳戶</h2>
         <div class="card">
-            <label>新增帳戶名稱：</label>
-            <div class="flex-row">
-                <input type="text" id="newAccountName" placeholder="例如：LinePay、玉山銀行">
-                <button onclick="addAccount()" style="width: 100px; background: var(--accent-gold); border:none; border-radius:8px; font-weight:bold; cursor:pointer;">新增</button>
-            </div>
+            <label>帳戶名稱：</label>
+            <input type="text" id="newAccountName" placeholder="例如：現金錢包、國泰世華">
+            <label>初始金額 (NT$)：</label>
+            <input type="number" id="newAccountInitial" placeholder="例如：1000">
+            <button onclick="addAccount()" class="submit-btn" style="margin-top:15px;">新增帳戶</button>
         </div>
-        <h2>現有帳戶列表</h2>
+        <h2>現有帳戶列表與資產</h2>
         <div class="card" id="accountListCard">載入中...</div>
+    </div>
+
+    <!-- 4. 圖表統計分頁 -->
+    <div id="charts" class="section">
+        <h2>📈 本週開銷統計</h2>
+        <div class="card" id="weekChartCard">載入中...</div>
+
+        <h2>📅 每月開銷統計</h2>
+        <div class="card" id="monthChartCard">載入中...</div>
     </div>
 </div>
 
 <script>
-    // 資料初始化
+    // 初始化資料
     let records = JSON.parse(localStorage.getItem('app_records')) || [];
-    let accounts = JSON.parse(localStorage.getItem('app_accounts')) || ["現金錢包", "中國信託", "國泰世華"];
+    let accounts = JSON.parse(localStorage.getItem('app_accounts')) || [
+        { name: "現金錢包", initial: 1000 },
+        { name: "中國信託", initial: 5000 },
+        { name: "國泰世華", initial: 10000 }
+    ];
     let weeklyBudget = Number(localStorage.getItem('app_weekly_budget')) || 3000;
     let currentType = "支出";
 
@@ -165,23 +193,33 @@
         const btn = event.target;
         btn.classList.add('active', type === '支出' ? 'expense' : type === '收入' ? 'income' : 'transfer');
 
-        if (type === '轉帳') {
-            document.getElementById('normalCategoryGroup').style.display = 'none';
-            document.getElementById('accountGroup').style.display = 'none';
-            document.getElementById('transferGroup').style.display = 'block';
+        document.getElementById('expenseCategoryGroup').style.display = (type === '支出') ? 'block' : 'none';
+        document.getElementById('incomeCategoryGroup').style.display = (type === '收入') ? 'block' : 'none';
+        document.getElementById('transferGroup').style.display = (type === '轉帳') ? 'block' : 'none';
+        document.getElementById('accountGroup').style.display = (type === '轉帳') ? 'none' : 'block';
+    }
+
+    function updateBudget() {
+        const val = Number(document.getElementById('budgetInput').value);
+        if (val > 0) {
+            weeklyBudget = val;
+            localStorage.setItem('app_weekly_budget', weeklyBudget);
+            render();
+            alert('本週預算已更新！');
         } else {
-            document.getElementById('normalCategoryGroup').style.display = 'block';
-            document.getElementById('accountGroup').style.display = 'block';
-            document.getElementById('transferGroup').style.display = 'none';
+            alert('請輸入有效的預算金額！');
         }
     }
 
     function addAccount() {
         const name = document.getElementById('newAccountName').value.trim();
-        if (name && !accounts.includes(name)) {
-            accounts.push(name);
+        const initial = Number(document.getElementById('newAccountInitial').value) || 0;
+        
+        if (name && !accounts.some(a => a.name === name)) {
+            accounts.push({ name, initial });
             localStorage.setItem('app_accounts', JSON.stringify(accounts));
             document.getElementById('newAccountName').value = '';
+            document.getElementById('newAccountInitial').value = '';
             render();
             alert('帳戶新增成功！');
         } else {
@@ -194,7 +232,7 @@
             alert('至少需要保留一個帳戶！');
             return;
         }
-        accounts = accounts.filter(a => a !== name);
+        accounts = accounts.filter(a => a.name !== name);
         localStorage.setItem('app_accounts', JSON.stringify(accounts));
         render();
     }
@@ -218,22 +256,23 @@
                 alert('轉出與轉入帳戶不能相同！');
                 return;
             }
+        } else if (currentType === '收入') {
+            newRecord.category = document.getElementById('incomeCategory').value;
+            newRecord.account = document.getElementById('account').value;
         } else {
-            newRecord.primary = document.getElementById('primaryCategory').value;
-            newRecord.sub = document.getElementById('subCategory').value || '一般';
+            newRecord.primary = document.getElementById('expensePrimary').value;
+            newRecord.sub = document.getElementById('expenseSub').value || '一般';
             newRecord.account = document.getElementById('account').value;
         }
 
         records.push(newRecord);
         localStorage.setItem('app_records', JSON.stringify(records));
         
-        // 重置表單並回首頁
         document.getElementById('amount').value = '';
         document.getElementById('note').value = '';
-        document.getElementById('subCategory').value = '';
+        document.getElementById('expenseSub').value = '';
         switchTab('home');
-        document.querySelector('.tabs button').classList.add('active');
-        document.querySelectorAll('.tab-btn')[1].classList.remove('active');
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
     }
 
     function deleteRecord(id) {
@@ -244,23 +283,22 @@
 
     function render() {
         // 更新下拉選單
-        const accSelects = ['account', 'fromAccount', 'toAccount'];
-        accSelects.forEach(id => {
+        const accNames = accounts.map(a => a.name);
+        ['account', 'fromAccount', 'toAccount'].forEach(id => {
             const el = document.getElementById(id);
             if (el) {
-                el.innerHTML = accounts.map(acc => `<option value="${acc}">${acc}</option>`).join('');
+                el.innerHTML = accNames.map(acc => `<option value="${acc}">${acc}</option>`).join('');
             }
         });
 
-        // 計算各帳戶餘額
+        // 計算各帳戶餘額 (初始金額 + 收入 - 支出 ± 轉帳)
         let balances = {};
-        accounts.forEach(acc => balances[acc] = 0);
+        accounts.forEach(a => balances[a.name] = a.initial);
 
         let totalExpense = 0;
         let todayExpense = 0;
         const todayStr = new Date().toISOString().split('T')[0];
 
-        // 計算本週一
         const now = new Date();
         const dayOfWeek = now.getDay() || 7;
         const monday = new Date(now);
@@ -282,40 +320,44 @@
             }
         });
 
-        // 渲染預算控制台
+        // 1. 渲染預算控制台 (可更改)
         let remaining = weeklyBudget - totalExpense;
         document.getElementById('budgetCard').innerHTML = `
-            本週總預算上限：$${weeklyBudget}<br>
             本週已花費總額：$${totalExpense}<br>
             <b>本週預算剩餘：$${remaining}</b><br>
-            今日已花費：$${todayExpense}
+            今日已花費：$${todayExpense}<br>
+            <div class="budget-input-group">
+                <input type="number" id="budgetInput" value="${weeklyBudget}" style="padding:8px;">
+                <button onclick="updateBudget()" style="background:var(--accent-gold); border:none; border-radius:8px; font-weight:bold; padding:0 15px; cursor:pointer;">修改預算</button>
+            </div>
         `;
 
-        // 渲染帳戶資產總覽
+        // 2. 渲染帳戶資產總覽
         let totalAsset = 0;
         let accHtml = '';
-        for (let acc in balances) {
-            totalAsset += balances[acc];
-            accHtml += `${acc}：$${balances[acc]}<br>`;
-        }
-        accHtml += `<b>總資產合計：$${totalAsset}</b>`;
+        accounts.forEach(a => {
+            let bal = balances[a.name] || 0;
+            totalAsset += bal;
+            accHtml += `${a.name} (初始 $${a.initial})：<b>$${bal}</b><br>`;
+        });
+        accHtml += `<br><b>總資產合計：$${totalAsset}</b>`;
         document.getElementById('accountSummaryCard').innerHTML = accHtml;
 
-        // 渲染帳戶管理頁面列表
-        document.getElementById('accountListCard').innerHTML = accounts.map(acc => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #333;">
-                <span>${acc} (餘額: $${balances[acc]})</span>
-                <button onclick="deleteAccount('${acc}')" style="background:#e74c3c; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">刪除</button>
+        // 3. 渲染帳戶管理頁面清單
+        document.getElementById('accountListCard').innerHTML = accounts.map(a => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #333;">
+                <div><b>${a.name}</b><br><span style="font-size:0.8rem; color:var(--text-sub);">初始金額: $${a.initial} | 目前餘額: $${balances[a.name]}</span></div>
+                <button onclick="deleteAccount('${a.name}')" style="background:#e74c3c; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer;">刪除</button>
             </div>
         `).join('');
 
-        // 渲染近期明細
+        // 4. 渲染近期明細
         const listEl = document.getElementById('recordListCard');
         if (records.length === 0) {
             listEl.innerHTML = '尚無記帳記錄';
         } else {
             listEl.innerHTML = records.slice(0, 15).map(r => {
-                let desc = r.type === '轉帳' ? `轉帳 (${r.from} ➔ ${r.to})` : `[${r.primary}] ${r.sub} (${r.account})`;
+                let desc = r.type === '轉帳' ? `轉帳 (${r.from} ➔ ${r.to})` : r.type === '收入' ? `[收入] ${r.category} (${r.account})` : `[${r.primary}] ${r.sub} (${r.account})`;
                 let amtClass = r.type === '收入' ? 'amount-income' : r.type === '支出' ? 'amount-expense' : 'amount-transfer';
                 let sign = r.type === '收入' ? '+' : r.type === '支出' ? '-' : '⇄';
                 return `
@@ -332,6 +374,45 @@
                 `;
             }).join('');
         }
+
+        // 5. 渲染圖表分頁 (週與月統計)
+        let weekCategories = {};
+        let monthCategories = {};
+        let weekTotal = 0;
+        let monthTotal = 0;
+
+        const currentMonthStr = new Date().toISOString().slice(0, 7); // YYYY-MM
+
+        records.forEach(r => {
+            if (r.type === '支出') {
+                // 本週統計
+                if (r.date >= mondayStr) {
+                    weekTotal += r.amount;
+                    weekCategories[r.primary] = (weekCategories[r.primary] || 0) + r.amount;
+                }
+                // 本月統計
+                if (r.date.startsWith(currentMonthStr)) {
+                    monthTotal += r.amount;
+                    monthCategories[r.primary] = (monthCategories[r.primary] || 0) + r.amount;
+                }
+            }
+        });
+
+        let weekHtml = `本週總支出：<b>$${weekTotal}</b><br><hr style="border-color:#333; margin:10px 0;">`;
+        for (let cat in weekCategories) {
+            let pct = weekTotal > 0 ? ((weekCategories[cat] / weekTotal) * 100).toFixed(1) : 0;
+            weekHtml += `${cat}: $${weekCategories[cat]} (${pct}%)<br>`;
+        }
+        if (weekTotal === 0) weekHtml += '本週尚無支出記錄';
+        document.getElementById('weekChartCard').innerHTML = weekHtml;
+
+        let monthHtml = `本月 (${currentMonthStr}) 總支出：<b>$${monthTotal}</b><br><hr style="border-color:#333; margin:10px 0;">`;
+        for (let cat in monthCategories) {
+            let pct = monthTotal > 0 ? ((monthCategories[cat] / monthTotal) * 100).toFixed(1) : 0;
+            monthHtml += `${cat}: $${monthCategories[cat]} (${pct}%)<br>`;
+        }
+        if (monthTotal === 0) monthHtml += '本月尚無支出記錄';
+        document.getElementById('monthChartCard').innerHTML = monthHtml;
     }
 
     render();
