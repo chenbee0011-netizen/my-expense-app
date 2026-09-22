@@ -1,491 +1,293 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <link rel="manifest" href="manifest.json">
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-  }
-</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的質感記帳 App</title>
+    <title>質感記帳 App</title>
     <style>
         :root {
             --bg-color: #121212;
             --card-bg: #1e1e1e;
-            --card-border: #2c2c2c;
-            --text-main: #e0e0e0;
-            --text-sub: #888888;
-            --accent-gold: #f39c12;
-            --accent-green: #2ecc71;
-            --accent-red: #e74c3c;
-            --accent-blue: #3498db;
+            --text-color: #e0e0e0;
+            --accent-color: #f39c12;
+            --danger-color: #e74c3c;
+            --success-color: #2ecc71;
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-color); margin: 0; padding: 15px; color: var(--text-main); }
-        .container { max-width: 500px; margin: 0 auto; padding-bottom: 70px; }
-        
-        /* 導覽列 */
-        .tabs { display: flex; justify-content: space-around; background: var(--card-bg); border-radius: 12px; padding: 8px; margin-bottom: 20px; border: 1px solid var(--card-border); position: sticky; top: 10px; z-index: 100; }
-        .tab-btn { background: none; border: none; color: var(--text-sub); font-size: 0.9rem; font-weight: bold; cursor: pointer; padding: 8px 10px; border-radius: 8px; }
-        .tab-btn.active { background: var(--accent-gold); color: #000; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 {
+            text-align: center;
+            color: var(--accent-color);
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            color: var(--text-color);
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+        /* 模擬計算機輸入框樣式 */
+        .calc-display {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            color: var(--text-color);
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            text-align: right;
+            letter-spacing: 1px;
+            min-height: 25px;
+            word-break: break-all;
+        }
+        /* 計算機鍵盤樣式 */
+        .calc-keypad {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .calc-btn {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .calc-btn:active {
+            background-color: #555;
+        }
+        .calc-btn.operator {
+            background-color: #d35400;
+        }
+        .calc-btn.equals {
+            background-color: var(--accent-color);
+            color: #121212;
+            font-weight: bold;
+        }
+        .calc-btn.clear {
+            background-color: var(--danger-color);
+        }
 
-        .section { display: none; }
-        .section.active { display: block; }
-
-        h2 { font-size: 1.1rem; border-left: 4px solid var(--accent-gold); padding-left: 8px; margin-top: 20px; color: var(--text-main); }
-        .card { background: var(--card-bg); border: 1px solid var(--card-border); padding: 16px; border-radius: 12px; margin-bottom: 15px; line-height: 1.6; }
-        
-        label { display: block; margin-top: 12px; font-size: 0.9rem; font-weight: bold; color: var(--text-sub); }
-        input, select { width: 100%; padding: 12px; margin-top: 6px; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; box-sizing: border-box; font-size: 1rem; color: #fff; }
-        
-        .type-selector { display: flex; gap: 10px; margin-top: 5px; }
-        .type-btn { flex: 1; padding: 10px; border: 1px solid #444; background: #2a2a2a; color: var(--text-sub); border-radius: 8px; cursor: pointer; font-weight: bold; text-align: center; }
-        .type-btn.active.expense { background: var(--accent-red); color: #fff; border-color: var(--accent-red); }
-        .type-btn.active.income { background: var(--accent-green); color: #fff; border-color: var(--accent-green); }
-        .type-btn.active.transfer { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
-
-        /* 圖示分類選擇網格 */
-        .category-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
-        .cat-item { background: #2a2a2a; border: 2px solid #444; border-radius: 12px; padding: 12px 5px; text-align: center; cursor: pointer; color: var(--text-main); font-size: 0.85rem; }
-        .cat-item.selected { border-color: var(--accent-gold); background: #332b1a; }
-        .cat-icon { font-size: 1.5rem; margin-bottom: 4px; display: block; }
-
-        button.submit-btn { background: var(--accent-gold); color: #000; border: none; padding: 14px; width: 100%; border-radius: 8px; font-size: 1rem; font-weight: bold; margin-top: 20px; cursor: pointer; }
-        button.submit-btn:active { opacity: 0.8; }
-
-        .record-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--card-border); font-size: 0.95rem; }
-        .record-info div:last-child { font-size: 0.8rem; color: var(--text-sub); margin-top: 3px; }
-        .record-amount { font-weight: bold; }
-        .amount-expense { color: var(--accent-red); }
-        .amount-income { color: var(--accent-green); }
-        .amount-transfer { color: var(--accent-blue); }
-
-        .del-btn { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 0.9rem; padding: 5px; }
-        .flex-row { display: flex; gap: 10px; }
-        .budget-input-group { display: flex; gap: 10px; margin-top: 8px; }
+        button.submit-btn {
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        button.submit-btn:active {
+            opacity: 0.8;
+        }
+        .transaction-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .transaction-item {
+            background-color: #2a2a2a;
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .expense { color: var(--danger-color); }
+        .income { color: var(--success-color); }
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 1rem;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <!-- 導覽列 -->
-    <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('home')">首頁</button>
-        <button class="tab-btn" onclick="switchTab('add')">記一筆</button>
-        <button class="tab-btn" onclick="switchTab('accounts')">帳戶</button>
-        <button class="tab-btn" onclick="switchTab('categories')">分類</button>
-        <button class="tab-btn" onclick="switchTab('charts')">圖表</button>
-    </div>
+    <h1>💰 質感記帳</h1>
 
-    <!-- 1. 首頁 -->
-    <div id="home" class="section active">
-        <h2>📊 本週預算控制台</h2>
-        <div class="card" id="budgetCard">載入中...</div>
-
-        <h2>💰 帳戶資產總覽</h2>
-        <div class="card" id="accountSummaryCard">載入中...</div>
-
-        <h2>📝 近期記帳明細</h2>
-        <div class="card" id="recordListCard">載入中...</div>
-    </div>
-
-    <!-- 2. 記帳輸入頁面 -->
-    <div id="add" class="section">
-        <h2>✍️ 新增收支 / 轉帳</h2>
-        <div class="card">
-            <label>記帳類型：</label>
-            <div class="type-selector">
-                <div class="type-btn active expense" onclick="setType('支出')">支出</div>
-                <div class="type-btn income" onclick="setType('收入')">收入</div>
-                <div class="type-btn transfer" onclick="setType('轉帳')">轉帳</div>
-            </div>
-
-            <label>日期：</label>
-            <input type="date" id="date">
-
-            <!-- 支出/收入 分類選單 (帶Emoji圖示) -->
-            <div id="categorySelectionGroup">
-                <label>選擇分類：</label>
-                <div id="categoryGrid" class="category-grid"></div>
-            </div>
-
-            <!-- 轉帳群組 -->
-            <div id="transferGroup" style="display:none;">
-                <label>轉出帳戶：</label>
-                <select id="fromAccount"></select>
-                <label>轉入帳戶：</label>
-                <select id="toAccount"></select>
-            </div>
-
-            <!-- 一般收支帳戶 -->
-            <div id="accountGroup">
-                <label>支付/收支帳戶：</label>
-                <select id="account"></select>
-            </div>
-
-            <label>金額 (NT$)：</label>
-            <input type="number" id="amount" placeholder="請輸入金額">
-
-            <label>備註說明：</label>
-            <input type="text" id="note" placeholder="例如：雞腿飯、月薪入帳">
-
-            <button class="submit-btn" onclick="addRecord()">確認儲存</button>
+    <!-- 記帳輸入卡片 -->
+    <div class="card">
+        <input type="text" id="title" placeholder="項目名稱 (例如: 午餐)">
+        
+        <!-- 計算機顯示列 -->
+        <div id="calcDisplay" class="calc-display">0</div>
+        
+        <!-- 計算機鍵盤 -->
+        <div class="calc-keypad">
+            <button class="calc-btn clear" onclick="calcClear()">C</button>
+            <button class="calc-btn" onclick="calcAppend('7')">7</button>
+            <button class="calc-btn" onclick="calcAppend('8')">8</button>
+            <button class="calc-btn" onclick="calcAppend('9')">9</button>
+            
+            <button class="calc-btn operator" onclick="calcAppend('+')">+</button>
+            <button class="calc-btn" onclick="calcAppend('4')">4</button>
+            <button class="calc-btn" onclick="calcAppend('5')">5</button>
+            <button class="calc-btn" onclick="calcAppend('6')">6</button>
+            
+            <button class="calc-btn operator" onclick="calcAppend('-')">-</button>
+            <button class="calc-btn" onclick="calcAppend('1')">1</button>
+            <button class="calc-btn" onclick="calcAppend('2')">2</button>
+            <button class="calc-btn" onclick="calcAppend('3')">3</button>
+            
+            <button class="calc-btn equals" onclick="calcResult()">=</button>
+            <button class="calc-btn" onclick="calcAppend('0')">0</button>
+            <button class="calc-btn" onclick="calcAppend('.')">.</button>
+            <button class="calc-btn" onclick="calcBackSpace()">⌫</button>
         </div>
+
+        <select id="type">
+            <option value="expense">支出 (-)</option>
+            <option value="income">收入 (+)</option>
+        </select>
+
+        <button class="submit-btn" onclick="addTransaction()">新增紀錄</button>
     </div>
 
-    <!-- 3. 帳戶管理 -->
-    <div id="accounts" class="section">
-        <h2>💳 新增帳戶</h2>
-        <div class="card">
-            <label>帳戶名稱：</label>
-            <input type="text" id="newAccountName" placeholder="例如：現金錢包、國泰世華">
-            <label>初始金額 (NT$)：</label>
-            <input type="number" id="newAccountInitial" placeholder="例如：1000">
-            <button onclick="addAccount()" class="submit-btn" style="margin-top:15px;">新增帳戶</button>
-        </div>
-        <h2>現有帳戶列表</h2>
-        <div class="card" id="accountListCard">載入中...</div>
-    </div>
-
-    <!-- 4. 自訂分類管理 (用 Emoji + 自訂名稱) -->
-    <div id="categories" class="section">
-        <h2>🏷️ 新增自訂分類</h2>
-        <div class="card">
-            <label>分類類型：</label>
-            <select id="newCatType">
-                <option value="支出">支出分類</option>
-                <option value="收入">收入分類</option>
-            </select>
-            <label>圖示 (請輸入手機 Emoji，例如 🍔 🚗)：</label>
-            <input type="text" id="newCatIcon" placeholder="🍔" maxlength="2" style="font-size: 1.5rem; text-align: center;">
-            <label>分類名稱：</label>
-            <input type="text" id="newCatName" placeholder="例如：餐飲、交通">
-            <button onclick="addCategory()" class="submit-btn" style="margin-top:15px;">新增分類</button>
-        </div>
-        <h2>現有分類列表</h2>
-        <div class="card" id="categoryListCard">載入中...</div>
-    </div>
-
-    <!-- 5. 圖表統計 -->
-    <div id="charts" class="section">
-        <h2>📈 本週開銷統計</h2>
-        <div class="card" id="weekChartCard">載入中...</div>
-
-        <h2>📅 每月開銷統計</h2>
-        <div class="card" id="monthChartCard">載入中...</div>
+    <!-- 紀錄列表卡片 -->
+    <div class="card">
+        <h3 style="margin-top:0; font-size:1.1rem; color:#aaa;">近期明細</h3>
+        <ul id="transactionList" class="transaction-list">
+            <!-- 動態生成 -->
+        </ul>
     </div>
 </div>
 
 <script>
-    // 初始化資料
-    let records = JSON.parse(localStorage.getItem('app_records')) || [];
-    let accounts = JSON.parse(localStorage.getItem('app_accounts')) || [
-        { name: "現金錢包", initial: 1000 },
-        { name: "中國信託", initial: 5000 },
-        { name: "國泰世華", initial: 10000 }
-    ];
-    let categories = JSON.parse(localStorage.getItem('app_categories')) || [
-        { type: "支出", icon: "🍜", name: "餐飲" },
-        { type: "支出", icon: "🚗", name: "交通" },
-        { type: "支出", icon: "🏠", name: "生活" },
-        { type: "支出", icon: "🛍️", name: "購物" },
-        { type: "支出", icon: "🎉", name: "娛樂" },
-        { type: "收入", icon: "💰", name: "薪資" },
-        { type: "收入", icon: "📈", name: "投資" }
-    ];
-    let weeklyBudget = Number(localStorage.getItem('app_weekly_budget')) || 3000;
-    let currentType = "支出";
-    let selectedCategory = "";
+    let currentExpression = "0";
 
-    document.getElementById('date').valueAsDate = new Date();
-
-    function switchTab(tabId) {
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(tabId).classList.add('active');
-        event.target.classList.add('active');
-        render();
+    function updateDisplay() {
+        document.getElementById('calcDisplay').innerText = currentExpression;
     }
 
-    function setType(type) {
-        currentType = type;
-        document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active', 'expense', 'income', 'transfer'));
-        const btn = event.target;
-        btn.classList.add('active', type === '支出' ? 'expense' : type === '收入' ? 'income' : 'transfer');
-
-        document.getElementById('categorySelectionGroup').style.display = (type === '轉帳') ? 'none' : 'block';
-        document.getElementById('accountGroup').style.display = (type === '轉帳') ? 'none' : 'block';
-        document.getElementById('transferGroup').style.display = (type === '轉帳') ? 'block' : 'none';
-        renderCategoryGrid();
-    }
-
-    function renderCategoryGrid() {
-        const grid = document.getElementById('categoryGrid');
-        const filtered = categories.filter(c => c.type === currentType);
-        if (filtered.length > 0 && (!selectedCategory || !filtered.some(c => c.name === selectedCategory))) {
-            selectedCategory = filtered[0].name;
-        }
-
-        grid.innerHTML = filtered.map(c => `
-            <div class="cat-item ${selectedCategory === c.name ? 'selected' : ''}" onclick="selectCategory('${c.name}')">
-                <span class="cat-icon">${c.icon}</span>
-                <span>${c.name}</span>
-            </div>
-        `).join('');
-    }
-
-    function selectCategory(name) {
-        selectedCategory = name;
-        renderCategoryGrid();
-    }
-
-    function addCategory() {
-        const type = document.getElementById('newCatType').value;
-        const icon = document.getElementById('newCatIcon').value.trim() || "📌";
-        const name = document.getElementById('newCatName').value.trim();
-
-        if (name && !categories.some(c => c.type === type && c.name === name)) {
-            categories.push({ type, icon, name });
-            localStorage.setItem('app_categories', JSON.stringify(categories));
-            document.getElementById('newCatName').value = '';
-            document.getElementById('newCatIcon').value = '';
-            render();
-            alert('分類新增成功！');
+    function calcAppend(val) {
+        if (currentExpression === "0" && val !== '.') {
+            currentExpression = val;
         } else {
-            alert('請輸入有效或未重複的分類名稱。');
+            currentExpression += val;
         }
+        updateDisplay();
     }
 
-    function deleteCategory(type, name) {
-        if (categories.filter(c => c.type === type).length <= 1) {
-            alert('該類型至少需要保留一個分類！');
-            return;
-        }
-        categories = categories.filter(c => !(c.type === type && c.name === name));
-        localStorage.setItem('app_categories', JSON.stringify(categories));
-        render();
+    function calcClear() {
+        currentExpression = "0";
+        updateDisplay();
     }
 
-    function updateBudget() {
-        const val = Number(document.getElementById('budgetInput').value);
-        if (val > 0) {
-            weeklyBudget = val;
-            localStorage.setItem('app_weekly_budget', weeklyBudget);
-            render();
-            alert('本週預算已更新！');
+    function calcBackSpace() {
+        if (currentExpression.length > 1) {
+            currentExpression = currentExpression.slice(0, -1);
         } else {
-            alert('請輸入有效的預算金額！');
+            currentExpression = "0";
         }
+        updateDisplay();
     }
 
-    function addAccount() {
-        const name = document.getElementById('newAccountName').value.trim();
-        const initial = Number(document.getElementById('newAccountInitial').value) || 0;
-        
-        if (name && !accounts.some(a => a.name === name)) {
-            accounts.push({ name, initial });
-            localStorage.setItem('app_accounts', JSON.stringify(accounts));
-            document.getElementById('newAccountName').value = '';
-            document.getElementById('newAccountInitial').value = '';
-            render();
-            alert('帳戶新增成功！');
-        } else {
-            alert('請輸入有效或未重複的帳戶名稱。');
+    function calcResult() {
+        try {
+            // 使用 eval 安全計算加減算式
+            let result = eval(currentExpression);
+            if (isNaN(result) || !isFinite(result)) {
+                currentExpression = "錯誤";
+            } else {
+                currentExpression = String(result);
+            }
+        } catch (error) {
+            currentExpression = "錯誤";
         }
+        updateDisplay();
     }
 
-    function deleteAccount(name) {
-        if (accounts.length <= 1) {
-            alert('至少需要保留一個帳戶！');
-            return;
-        }
-        accounts = accounts.filter(a => a.name !== name);
-        localStorage.setItem('app_accounts', JSON.stringify(accounts));
-        render();
-    }
+    // 讀取本地儲存的記帳資料
+    let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
 
-    function addRecord() {
-        const date = document.getElementById('date').value;
-        const amount = Number(document.getElementById('amount').value);
-        const note = document.getElementById('note').value;
+    function addTransaction() {
+        // 先自動計算當前算式當作最終金額
+        calcResult();
+        let amount = parseFloat(currentExpression);
+        let title = document.getElementById('title').value.trim();
+        let type = document.getElementById('type').value;
 
-        if (!date || !amount) {
-            alert('請完整填寫日期與金額！');
+        if (!title || isNaN(amount) || amount <= 0) {
+            alert('請輸入有效的項目名稱與金額！');
             return;
         }
 
-        let newRecord = { id: Date.now(), type: currentType, date, amount, note };
+        const transaction = {
+            id: Date.now(),
+            title: title,
+            amount: amount,
+            type: type
+        };
 
-        if (currentType === '轉帳') {
-            newRecord.from = document.getElementById('fromAccount').value;
-            newRecord.to = document.getElementById('toAccount').value;
-            if (newRecord.from === newRecord.to) {
-                alert('轉出與轉入帳戶不能相同！');
-                return;
-            }
-        } else {
-            newRecord.category = selectedCategory;
-            newRecord.account = document.getElementById('account').value;
-        }
+        transactions.push(transaction);
+        saveAndRender();
 
-        records.push(newRecord);
-        localStorage.setItem('app_records', JSON.stringify(records));
-        
-        document.getElementById('amount').value = '';
-        document.getElementById('note').value = '';
-        switchTab('home');
-        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        // 清空輸入
+        document.getElementById('title').value = '';
+        calcClear();
     }
 
-    function deleteRecord(id) {
-        records = records.filter(r => r.id !== id);
-        localStorage.setItem('app_records', JSON.stringify(records));
-        render();
+    function deleteTransaction(id) {
+        transactions = transactions.filter(t => t.id !== id);
+        saveAndRender();
     }
 
-    function render() {
-        const accNames = accounts.map(a => a.name);
-        ['account', 'fromAccount', 'toAccount'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.innerHTML = accNames.map(acc => `<option value="${acc}">${acc}</option>`).join('');
-            }
+    function saveAndRender() {
+        localStorage.setItem('transactions', JSON.stringify(transactions));
+        const listEl = document.getElementById('transactionList');
+        listEl.innerHTML = '';
+
+        transactions.slice().reverse().forEach(t => {
+            const li = document.createElement('li');
+            li.className = 'transaction-item';
+            li.innerHTML = `
+                <span>${t.title}</span>
+                <span class="${t.type}">
+                    ${t.type === 'expense' ? '-' : '+'}$${t.amount}
+                    <button class="delete-btn" onclick="deleteTransaction(${t.id})">×</button>
+                </span>
+            `;
+            listEl.appendChild(li);
         });
-
-        renderCategoryGrid();
-
-        let balances = {};
-        accounts.forEach(a => balances[a.name] = a.initial);
-
-        let totalExpense = 0;
-        let todayExpense = 0;
-        const todayStr = new Date().toISOString().split('T')[0];
-
-        const now = new Date();
-        const dayOfWeek = now.getDay() || 7;
-        const monday = new Date(now);
-        monday.setDate(now.getDate() - dayOfWeek + 1);
-        const mondayStr = monday.toISOString().split('T')[0];
-
-        records.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        records.forEach(r => {
-            if (r.type === '收入') {
-                if (balances[r.account] !== undefined) balances[r.account] += r.amount;
-            } else if (r.type === '支出') {
-                if (balances[r.account] !== undefined) balances[r.account] -= r.amount;
-                if (r.date === todayStr) todayExpense += r.amount;
-                if (r.date >= mondayStr) totalExpense += r.amount;
-            } else if (r.type === '轉帳') {
-                if (balances[r.from] !== undefined) balances[r.from] -= r.amount;
-                if (balances[r.to] !== undefined) balances[r.to] += r.amount;
-            }
-        });
-
-        // 預算控制台
-        let remaining = weeklyBudget - totalExpense;
-        document.getElementById('budgetCard').innerHTML = `
-            本週已花費總額：$${totalExpense}<br>
-            <b>本週預算剩餘：$${remaining}</b><br>
-            今日已花費：$${todayExpense}<br>
-            <div class="budget-input-group">
-                <input type="number" id="budgetInput" value="${weeklyBudget}" style="padding:8px;">
-                <button onclick="updateBudget()" style="background:var(--accent-gold); border:none; border-radius:8px; font-weight:bold; padding:0 15px; cursor:pointer;">修改預算</button>
-            </div>
-        `;
-
-        // 帳戶資產
-        let totalAsset = 0;
-        let accHtml = '';
-        accounts.forEach(a => {
-            let bal = balances[a.name] || 0;
-            totalAsset += bal;
-            accHtml += `${a.name} (初始 $${a.initial})：<b>$${bal}</b><br>`;
-        });
-        accHtml += `<br><b>總資產合計：$${totalAsset}</b>`;
-        document.getElementById('accountSummaryCard').innerHTML = accHtml;
-
-        // 帳戶管理清單
-        document.getElementById('accountListCard').innerHTML = accounts.map(a => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #333;">
-                <div><b>${a.name}</b><br><span style="font-size:0.8rem; color:var(--text-sub);">初始金額: $${a.initial} | 目前餘額: $${balances[a.name]}</span></div>
-                <button onclick="deleteAccount('${a.name}')" style="background:#e74c3c; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer;">刪除</button>
-            </div>
-        `).join('');
-
-        // 分類管理清單
-        document.getElementById('categoryListCard').innerHTML = categories.map(c => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #333;">
-                <div><span style="font-size:1.2rem; margin-right:8px;">${c.icon}</span><b>[${c.type}] ${c.name}</b></div>
-                <button onclick="deleteCategory('${c.type}', '${c.name}')" style="background:#e74c3c; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer;">刪除</button>
-            </div>
-        `).join('');
-
-        // 近期明細
-        const listEl = document.getElementById('recordListCard');
-        if (records.length === 0) {
-            listEl.innerHTML = '尚無記帳記錄';
-        } else {
-            listEl.innerHTML = records.slice(0, 15).map(r => {
-                let catObj = categories.find(c => c.name === r.category);
-                let icon = catObj ? catObj.icon : '📌';
-                let desc = r.type === '轉帳' ? `轉帳 (${r.from} ➔ ${r.to})` : `${icon} ${r.category} (${r.account})`;
-                let amtClass = r.type === '收入' ? 'amount-income' : r.type === '支出' ? 'amount-expense' : 'amount-transfer';
-                let sign = r.type === '收入' ? '+' : r.type === '支出' ? '-' : '⇄';
-                return `
-                    <div class="record-item">
-                        <div class="record-info">
-                            <div><b>${desc}</b> ${r.note ? '- ' + r.note : ''}</div>
-                            <div>${r.date}</div>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <span class="record-amount ${amtClass}">${sign}$${r.amount}</span>
-                            <button class="del-btn" onclick="deleteRecord(${r.id})">✕</button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // 圖表統計
-        let weekCategories = {};
-        let monthCategories = {};
-        let weekTotal = 0;
-        let monthTotal = 0;
-        const currentMonthStr = new Date().toISOString().slice(0, 7);
-
-        records.forEach(r => {
-            if (r.type === '支出') {
-                if (r.date >= mondayStr) {
-                    weekTotal += r.amount;
-                    weekCategories[r.category] = (weekCategories[r.category] || 0) + r.amount;
-                }
-                if (r.date.startsWith(currentMonthStr)) {
-                    monthTotal += r.amount;
-                    monthCategories[r.category] = (monthCategories[r.category] || 0) + r.amount;
-                }
-            }
-        });
-
-        let weekHtml = `本週總支出：<b>$${weekTotal}</b><br><hr style="border-color:#333; margin:10px 0;">`;
-        for (let cat in weekCategories) {
-            let pct = weekTotal > 0 ? ((weekCategories[cat] / weekTotal) * 100).toFixed(1) : 0;
-            weekHtml += `${cat}: $${weekCategories[cat]} (${pct}%)<br>`;
-        }
-        if (weekTotal === 0) weekHtml += '本週尚無支出記錄';
-        document.getElementById('weekChartCard').innerHTML = weekHtml;
-
-        let monthHtml = `本月 (${currentMonthStr}) 總支出：<b>$${monthTotal}</b><br><hr style="border-color:#333; margin:10px 0;">`;
-        for (let cat in monthCategories) {
-            let pct = monthTotal > 0 ? ((monthCategories[cat] / monthTotal) * 100).toFixed(1) : 0;
-            monthHtml += `${cat}: $${monthCategories[cat]} (${pct}%)<br>`;
-        }
-        if (monthTotal === 0) monthHtml += '本月尚無支出記錄';
-        document.getElementById('monthChartCard').innerHTML = monthHtml;
     }
 
-    render();
+    // 初始化載入
+    saveAndRender();
 </script>
 
 </body>
