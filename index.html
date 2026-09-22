@@ -50,36 +50,57 @@
             box-sizing: border-box;
             font-size: 1rem;
         }
-        /* 模擬計算機輸入框樣式 */
+        input:focus, select:focus {
+            border-color: var(--accent-color);
+            outline: none;
+        }
+        
+        /* 自定義計算機彈窗樣式 */
+        .calc-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .calc-box {
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 320px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.8);
+            border: 1px solid #444;
+        }
         .calc-display {
             background-color: #2a2a2a;
-            border: 1px solid #444;
-            color: var(--text-color);
-            padding: 12px;
-            margin: 8px 0;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 15px;
+            margin-bottom: 15px;
             border-radius: 8px;
-            font-size: 1.2rem;
+            font-size: 1.5rem;
             text-align: right;
             letter-spacing: 1px;
-            min-height: 25px;
+            min-height: 30px;
             word-break: break-all;
         }
-        /* 計算機鍵盤樣式 */
         .calc-keypad {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin-bottom: 12px;
+            gap: 10px;
         }
         .calc-btn {
             background-color: #333;
             color: white;
             border: none;
-            padding: 14px;
-            font-size: 1.1rem;
+            padding: 16px;
+            font-size: 1.2rem;
             border-radius: 8px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.1s;
         }
         .calc-btn:active {
             background-color: #555;
@@ -95,6 +116,12 @@
         .calc-btn.clear {
             background-color: var(--danger-color);
         }
+        .calc-btn.confirm {
+            background-color: var(--success-color);
+            grid-column: span 4;
+            margin-top: 5px;
+            font-weight: bold;
+        }
 
         button.submit-btn {
             background-color: var(--success-color);
@@ -106,6 +133,7 @@
             padding: 12px;
             border-radius: 8px;
             font-size: 1rem;
+            margin-top: 8px;
         }
         button.submit-btn:active {
             opacity: 0.8;
@@ -117,9 +145,9 @@
         }
         .transaction-item {
             background-color: #2a2a2a;
-            padding: 10px 15px;
+            padding: 12px 15px;
             margin-bottom: 8px;
-            border-radius: 6px;
+            border-radius: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -131,7 +159,11 @@
             border: none;
             color: #888;
             cursor: pointer;
-            font-size: 1rem;
+            font-size: 1.2rem;
+            margin-left: 10px;
+        }
+        .delete-btn:hover {
+            color: var(--danger-color);
         }
     </style>
 </head>
@@ -143,11 +175,30 @@
     <!-- 記帳輸入卡片 -->
     <div class="card">
         <input type="text" id="title" placeholder="項目名稱 (例如: 午餐)">
+        <!-- 點擊此金額欄位才會叫出計算機 -->
+        <input type="text" id="amountDisplay" placeholder="點擊輸入金額" readonly onclick="openCalc()">
         
-        <!-- 計算機顯示列 -->
-        <div id="calcDisplay" class="calc-display">0</div>
-        
-        <!-- 計算機鍵盤 -->
+        <select id="type">
+            <option value="expense">支出 (-)</option>
+            <option value="income">收入 (+)</option>
+        </select>
+
+        <button class="submit-btn" onclick="addTransaction()">新增紀錄</button>
+    </div>
+
+    <!-- 紀錄列表卡片 -->
+    <div class="card">
+        <h3 style="margin-top:0; font-size:1.1rem; color:#aaa;">近期明細</h3>
+        <ul id="transactionList" class="transaction-list">
+            <!-- 動態生成 -->
+        </ul>
+    </div>
+</div>
+
+<!-- 計算機彈窗 -->
+<div id="calcModal" class="calc-modal">
+    <div class="calc-box">
+        <div id="calcScreen" class="calc-display">0</div>
         <div class="calc-keypad">
             <button class="calc-btn clear" onclick="calcClear()">C</button>
             <button class="calc-btn" onclick="calcAppend('7')">7</button>
@@ -168,30 +219,24 @@
             <button class="calc-btn" onclick="calcAppend('0')">0</button>
             <button class="calc-btn" onclick="calcAppend('.')">.</button>
             <button class="calc-btn" onclick="calcBackSpace()">⌫</button>
+
+            <button class="calc-btn confirm" onclick="calcConfirm()">確定金額</button>
         </div>
-
-        <select id="type">
-            <option value="expense">支出 (-)</option>
-            <option value="income">收入 (+)</option>
-        </select>
-
-        <button class="submit-btn" onclick="addTransaction()">新增紀錄</button>
-    </div>
-
-    <!-- 紀錄列表卡片 -->
-    <div class="card">
-        <h3 style="margin-top:0; font-size:1.1rem; color:#aaa;">近期明細</h3>
-        <ul id="transactionList" class="transaction-list">
-            <!-- 動態生成 -->
-        </ul>
     </div>
 </div>
 
 <script>
     let currentExpression = "0";
+    let finalAmount = 0;
 
-    function updateDisplay() {
-        document.getElementById('calcDisplay').innerText = currentExpression;
+    function openCalc() {
+        document.getElementById('calcModal').style.display = 'flex';
+        currentExpression = "0";
+        updateCalcScreen();
+    }
+
+    function updateCalcScreen() {
+        document.getElementById('calcScreen').innerText = currentExpression;
     }
 
     function calcAppend(val) {
@@ -200,12 +245,12 @@
         } else {
             currentExpression += val;
         }
-        updateDisplay();
+        updateCalcScreen();
     }
 
     function calcClear() {
         currentExpression = "0";
-        updateDisplay();
+        updateCalcScreen();
     }
 
     function calcBackSpace() {
@@ -214,12 +259,11 @@
         } else {
             currentExpression = "0";
         }
-        updateDisplay();
+        updateCalcScreen();
     }
 
     function calcResult() {
         try {
-            // 使用 eval 安全計算加減算式
             let result = eval(currentExpression);
             if (isNaN(result) || !isFinite(result)) {
                 currentExpression = "錯誤";
@@ -229,20 +273,28 @@
         } catch (error) {
             currentExpression = "錯誤";
         }
-        updateDisplay();
+        updateCalcScreen();
     }
 
-    // 讀取本地儲存的記帳資料
+    function calcConfirm() {
+        calcResult();
+        if (currentExpression !== "錯誤") {
+            finalAmount = parseFloat(currentExpression);
+            document.getElementById('amountDisplay').value = finalAmount;
+            document.getElementById('calcModal').style.display = 'none';
+        } else {
+            alert('算式有誤，請重新輸入！');
+        }
+    }
+
+    // 記帳核心邏輯
     let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
 
     function addTransaction() {
-        // 先自動計算當前算式當作最終金額
-        calcResult();
-        let amount = parseFloat(currentExpression);
         let title = document.getElementById('title').value.trim();
         let type = document.getElementById('type').value;
 
-        if (!title || isNaN(amount) || amount <= 0) {
+        if (!title || isNaN(finalAmount) || finalAmount <= 0) {
             alert('請輸入有效的項目名稱與金額！');
             return;
         }
@@ -250,16 +302,17 @@
         const transaction = {
             id: Date.now(),
             title: title,
-            amount: amount,
+            amount: finalAmount,
             type: type
         };
 
         transactions.push(transaction);
         saveAndRender();
 
-        // 清空輸入
+        // 清空欄位
         document.getElementById('title').value = '';
-        calcClear();
+        document.getElementById('amountDisplay').value = '';
+        finalAmount = 0;
     }
 
     function deleteTransaction(id) {
@@ -286,7 +339,6 @@
         });
     }
 
-    // 初始化載入
     saveAndRender();
 </script>
 
