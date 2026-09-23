@@ -1,7 +1,7 @@
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open('expense-app-v1').then((cache) => {
-      return cache.addAll(['./index.html']);
+    caches.match('index.html').then((cache) => {
+      return cache;
     })
   );
 });
