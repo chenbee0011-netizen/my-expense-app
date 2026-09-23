@@ -202,26 +202,20 @@
             margin-top: 2px;
         }
 
-        /* 分類與帳戶統計長條圖 */
-        .stat-bar-container {
-            margin-bottom: 12px;
+        /* 分析頁面互動區塊 */
+        .stat-clickable {
+            cursor: pointer;
+            transition: background 0.2s;
+            border-radius: 8px;
+            padding: 4px;
         }
-        .stat-bar-info {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.85rem;
-            margin-bottom: 4px;
-        }
-        .stat-bar-bg {
+        .stat-clickable:hover {
             background-color: #2a2a2a;
-            border-radius: 4px;
-            height: 8px;
-            overflow: hidden;
         }
-        .stat-bar-fill {
-            background-color: var(--accent-color);
-            height: 100%;
-            border-radius: 4px;
+        .drilldown-list {
+            margin: 8px 0 15px 0;
+            padding-left: 10px;
+            border-left: 2px solid var(--accent-color);
         }
     </style>
 </head>
@@ -394,6 +388,7 @@
     let viewDate = new Date();
     let analysisDate = new Date();
     let selectedDateStr = new Date().toISOString().slice(0, 10);
+    let drillDownKey = null; // 紀錄目前分析頁面點開的細項 key
 
     document.getElementById('txDate').valueAsDate = new Date();
 
@@ -502,9 +497,18 @@
                 alert('轉出帳戶餘額不足！');
                 return;
             }
+            
+            // 修正轉帳扣款邏輯：
+            // 如果轉出是現金/活存，資產減少；如果是信用卡，代表調整信用額度可視情況處理。
+            // 若轉入是信用卡（例如國泰轉信用卡繳卡費），信用卡負債應減少！
             if (acc.type === 'credit') acc.balance -= amount;
             else acc.balance -= amount;
-            toAcc.balance += amount;
+
+            if (toAcc.type === 'credit') {
+                toAcc.balance -= amount; // 繳卡費：信用卡負債減少
+            } else {
+                toAcc.balance += amount; // 一般帳戶互轉：轉入帳戶增加
+            }
         }
 
         let tx = {
@@ -539,7 +543,10 @@
                 if (acc.type === 'credit') acc.balance += t.amount;
                 else acc.balance += t.amount;
                 let toAcc = accounts.find(a => a.id === t.toAccountId);
-                if (toAcc) toAcc.balance -= t.amount;
+                if (toAcc) {
+                    if (toAcc.type === 'credit') toAcc.balance += t.amount;
+                    else toAcc.balance -= t.amount;
+                }
             }
         }
     }
@@ -648,6 +655,12 @@
 
     function changeAnalysisMonth(direction) {
         analysisDate.setMonth(analysisDate.getMonth() + direction);
+        drillDownKey = null; // 切換月份時重置細項展開
+        renderAnalysis();
+    }
+
+    function toggleDrillDown(key) {
+        drillDownKey = (drillDownKey === key) ? null : key;
         renderAnalysis();
     }
 
@@ -752,13 +765,11 @@
         let totalExpense = monthTxs.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
         let totalIncome = monthTxs.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
 
-        // 統計各分類金額
         let catStats = {};
         monthTxs.filter(t => t.type === 'expense').forEach(t => {
             catStats[t.categoryId] = (catStats[t.categoryId] || 0) + t.amount;
         });
 
-        // 統計各帳戶本月開銷 (包含支出與轉出)
         let accStats = {};
         monthTxs.filter(t => t.type === 'expense' || t.type === 'transfer').forEach(t => {
             accStats[t.accountId] = (accStats[t.accountId] || 0) + t.amount;
@@ -769,7 +780,7 @@
             <p>💰 本月總支出：<strong class="expense">-$${totalExpense}</strong></p>
             <p>💵 本月總收入：<strong class="income">+$${totalIncome}</strong></p>
             <hr style="border:0; border-top:1px solid #444; margin:15px 0;">
-            <h4 style="color:var(--accent-color); margin-bottom:10px;">🏷️ 分類支出佔比</h4>
+            <h4 style="color:var(--accent-color); margin-bottom:10px;">🏷️ 分類支出佔比 (點擊查看細項)</h4>
         `;
 
         if (totalExpense === 0) {
@@ -780,25 +791,44 @@
                 let cat = categories.find(c => c.id === catId) || { name: '其他', icon: '🔄' };
                 let amount = catStats[catId];
                 let percent = Math.round((amount / totalExpense) * 100);
+                let isExpanded = (drillDownKey === 'cat_' + catId);
 
                 html += `
-                    <div class="stat-bar-container">
-                        <div class="stat-bar-info">
-                            <span>${cat.icon} ${cat.name}</span>
-                            <span>$${amount} (${percent}%)</span>
-                        </div>
-                        <div class="stat-bar-bg">
-                            <div class="stat-bar-fill" style="width: ${percent}%;"></div>
+                    <div class="stat-clickable" onclick="toggleDrillDown('cat_${catId}')">
+                        <div class="stat-bar-container">
+                            <div class="stat-bar-info">
+                                <span>${cat.icon} ${cat.name} ▾</span>
+                                <span>$${amount} (${percent}%)</span>
+                            </div>
+                            <div class="stat-bar-bg">
+                                <div class="stat-bar-fill" style="width: ${percent}%;"></div>
+                            </div>
                         </div>
                     </div>
                 `;
+
+                if (isExpanded) {
+                    let subTxs = monthTxs.filter(t => t.categoryId === catId && t.type === 'expense');
+                    html += `<div class="drilldown-list">`;
+                    if(subTxs.length === 0) {
+                        html += `<p style="color:#888; font-size:0.85rem; margin:5px 0;">無明細紀錄</p>`;
+                    } else {
+                        subTxs.forEach(st => {
+                            let acc = accounts.find(a => a.id === st.accountId) || { name: '' };
+                            html += `<div style="display:flex; justify-content:between; font-size:0.85rem; margin:4px 0; color:#ccc;">
+                                <span>${st.date.slice(5)} - ${st.title} [${acc.name}]</span>
+                                <span class="expense">-$${st.amount}</span>
+                            </div>`;
+                        });
+                    }
+                    html += `</div>`;
+                }
             });
         }
 
-        // 額外加入：各帳戶每個月開銷統計區塊
         html += `
             <hr style="border:0; border-top:1px solid #444; margin:15px 0;">
-            <h4 style="color:var(--accent-color); margin-bottom:10px;">💳 各帳戶本月開銷</h4>
+            <h4 style="color:var(--accent-color); margin-bottom:10px;">💳 各帳戶本月開銷 (點擊查看細項)</h4>
         `;
 
         let sortedAccs = Object.keys(accStats).sort((a, b) => accStats[b] - accStats[a]);
@@ -809,18 +839,38 @@
                 let acc = accounts.find(a => a.id === accId) || { name: '未知帳戶', type: 'asset' };
                 let amount = accStats[accId];
                 let accPercent = totalExpense > 0 ? Math.min(100, Math.round((amount / totalExpense) * 100)) : 0;
+                let isExpanded = (drillDownKey === 'acc_' + accId);
 
                 html += `
-                    <div class="stat-bar-container">
-                        <div class="stat-bar-info">
-                            <span>💳 ${acc.name} (${acc.type === 'credit' ? '信用卡' : '資產'})</span>
-                            <span class="expense">-$${amount}</span>
-                        </div>
-                        <div class="stat-bar-bg">
-                            <div class="stat-bar-fill" style="width: ${accPercent}%; background-color: var(--credit-color);"></div>
+                    <div class="stat-clickable" onclick="toggleDrillDown('acc_${accId}')">
+                        <div class="stat-bar-container">
+                            <div class="stat-bar-info">
+                                <span>💳 ${acc.name} ▾</span>
+                                <span class="expense">-$${amount}</span>
+                            </div>
+                            <div class="stat-bar-bg">
+                                <div class="stat-bar-fill" style="width: ${accPercent}%; background-color: var(--credit-color);"></div>
+                            </div>
                         </div>
                     </div>
                 `;
+
+                if (isExpanded) {
+                    let subTxs = monthTxs.filter(t => t.accountId === accId && (t.type === 'expense' || t.type === 'transfer'));
+                    html += `<div class="drilldown-list">`;
+                    if(subTxs.length === 0) {
+                        html += `<p style="color:#888; font-size:0.85rem; margin:5px 0;">無明細紀錄</p>`;
+                    } else {
+                        subTxs.forEach(st => {
+                            let cat = categories.find(c => c.id === st.categoryId) || { name: '轉帳', icon: '🔄' };
+                            html += `<div style="display:flex; justify-content:between; font-size:0.85rem; margin:4px 0; color:#ccc;">
+                                <span>${st.date.slice(5)} - ${cat.icon} ${st.title}</span>
+                                <span class="${st.type === 'expense' ? 'expense' : 'transfer'}">-$${st.amount}</span>
+                            </div>`;
+                        });
+                    }
+                    html += `</div>`;
+                }
             });
         }
 
@@ -838,7 +888,6 @@
         renderCalendar();
         renderAnalysis();
 
-        // 渲染分類管理清單
         let manageCat = document.getElementById('manageCategoryList');
         manageCat.innerHTML = '';
         categories.forEach(cat => {
