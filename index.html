@@ -130,16 +130,19 @@
         
         .action-btns {
             display: flex;
-            gap: 8px;
+            gap: 6px;
         }
         .btn-icon {
             background: none;
             border: none;
             color: #888;
             cursor: pointer;
-            font-size: 1rem;
+            font-size: 0.9rem;
+            padding: 4px 6px;
+            border-radius: 4px;
+            background-color: #333;
         }
-        .btn-icon:hover { color: var(--accent-color); }
+        .btn-icon:hover { color: var(--accent-color); background-color: #444; }
 
         .cat-grid {
             display: grid;
@@ -384,11 +387,10 @@
     let currentTxType = 'expense';
     let selectedCategory = categories[0]?.id || '';
     
-    // 月曆與分析頁面狀態
     let viewDate = new Date();
     let analysisDate = new Date();
     let selectedDateStr = new Date().toISOString().slice(0, 10);
-    let drillDownKey = null; // 紀錄目前分析頁面點開的細項 key
+    let drillDownKey = null;
 
     document.getElementById('txDate').valueAsDate = new Date();
 
@@ -498,16 +500,13 @@
                 return;
             }
             
-            // 修正轉帳扣款邏輯：
-            // 如果轉出是現金/活存，資產減少；如果是信用卡，代表調整信用額度可視情況處理。
-            // 若轉入是信用卡（例如國泰轉信用卡繳卡費），信用卡負債應減少！
             if (acc.type === 'credit') acc.balance -= amount;
             else acc.balance -= amount;
 
             if (toAcc.type === 'credit') {
-                toAcc.balance -= amount; // 繳卡費：信用卡負債減少
+                toAcc.balance -= amount;
             } else {
-                toAcc.balance += amount; // 一般帳戶互轉：轉入帳戶增加
+                toAcc.balance += amount;
             }
         }
 
@@ -613,6 +612,23 @@
         alert('帳戶新增成功！');
     }
 
+    // 修改帳戶餘額功能
+    function editAccountBalance(id) {
+        let acc = accounts.find(a => a.id === id);
+        if (!acc) return;
+        let newBal = prompt(`請輸入「${acc.name}」的最新正確金額：`, acc.balance);
+        if (newBal !== null) {
+            let parsed = parseFloat(newBal);
+            if (!isNaN(parsed)) {
+                acc.balance = parsed;
+                renderAll();
+                alert('帳戶金額已更新！');
+            } else {
+                alert('請輸入有效的數字！');
+            }
+        }
+    }
+
     function deleteAccount(id) {
         if (accounts.length <= 1) { alert('至少需要保留一個帳戶！'); return; }
         accounts = accounts.filter(a => a.id !== id);
@@ -655,7 +671,7 @@
 
     function changeAnalysisMonth(direction) {
         analysisDate.setMonth(analysisDate.getMonth() + direction);
-        drillDownKey = null; // 切換月份時重置細項展開
+        drillDownKey = null;
         renderAnalysis();
     }
 
@@ -972,13 +988,19 @@
         });
         document.getElementById('netAssets').innerText = '$' + (netAssets - totalDebt);
 
+        // 帳戶管理清單（新增修改金額與刪除按鈕）
         let manageAcc = document.getElementById('manageAccountList');
         manageAcc.innerHTML = '';
         accounts.forEach(acc => {
             let div = document.createElement('div');
             div.className = 'item-row';
-            div.innerHTML = `<span>${acc.name} (${acc.type === 'credit' ? '信用卡' : '資產'})：$${acc.balance}</span>
-                             <button class="btn-icon" onclick="deleteAccount('${acc.id}')">刪除</button>`;
+            div.innerHTML = `
+                <span>${acc.name} (${acc.type === 'credit' ? '信用卡' : '資產'})：$${acc.balance}</span>
+                <div class="action-btns">
+                    <button class="btn-icon" onclick="editAccountBalance('${acc.id}')">修改</button>
+                    <button class="btn-icon" onclick="deleteAccount('${acc.id}')" style="color:var(--danger-color);">刪除</button>
+                </div>
+            `;
             manageAcc.appendChild(div);
         });
     }
