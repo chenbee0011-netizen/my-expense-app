@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <link rel="manifest" href="manifest.json">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>質感記帳 App</title>
@@ -333,6 +332,15 @@
             <h3>📂 現有帳戶列表</h3>
             <div id="manageAccountList"></div>
         </div>
+        
+        <!-- 備份與還原卡片 -->
+        <div class="card">
+            <h3>💾 數據備份與還原</h3>
+            <p style="font-size:0.85rem; color:#aaa; margin-bottom:12px;">你可以隨時將記帳資料備份下載，或透過備份檔案還原資料。</p>
+            <button class="submit-btn" style="background-color: var(--credit-color); margin-bottom: 10px;" onclick="exportBackup()">📤 匯出備份 (下載檔案)</button>
+            <button class="submit-btn" style="background-color: #7f8c8d;" onclick="document.getElementById('importFile').click()">📥 讀取備份 (還原資料)</button>
+            <input type="file" id="importFile" style="display:none" accept=".json" onchange="importBackup(event)">
+        </div>
     </div>
 
     <!-- 分類管理 -->
@@ -385,9 +393,6 @@
     let transactions = JSON.parse(localStorage.getItem('my_transactions')) || [];
     let weeklyBudget = localStorage.getItem('my_budget') ? parseFloat(localStorage.getItem('my_budget')) : 3000;
 
-    let currentTxType = 'expense';
-    let selectedCategory = categories[0]?.id || '';
-    
     let viewDate = new Date();
     let analysisDate = new Date();
     let selectedDateStr = new Date().toISOString().slice(0, 10);
@@ -402,6 +407,9 @@
         if(btn) btn.classList.add('active');
         renderAll();
     }
+
+    let currentTxType = 'expense';
+    let selectedCategory = categories[0]?.id || '';
 
     function setTxType(type) {
         currentTxType = type;
@@ -613,7 +621,6 @@
         alert('帳戶新增成功！');
     }
 
-    // 修改帳戶餘額功能
     function editAccountBalance(id) {
         let acc = accounts.find(a => a.id === id);
         if (!acc) return;
@@ -663,6 +670,54 @@
             renderAll();
             alert('週預算已更新！');
         }
+    }
+
+    // 數據備份匯出
+    function exportBackup() {
+        let backupData = {
+            accounts: accounts,
+            categories: categories,
+            transactions: transactions,
+            weeklyBudget: weeklyBudget,
+            version: '1.0',
+            exportDate: new Date().toISOString()
+        };
+        let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+        let downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        let dateStr = new Date().toISOString().slice(0, 10);
+        downloadAnchor.setAttribute("download", `my_account_backup_${dateStr}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    }
+
+    // 讀取備份匯入
+    function importBackup(event) {
+        let file = event.target.files[0];
+        if (!file) return;
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                let imported = JSON.parse(e.target.result);
+                if (imported.accounts && imported.categories && imported.transactions) {
+                    if (confirm('確定要還原此備份嗎？目前的資料將會被覆蓋！')) {
+                        accounts = imported.accounts;
+                        categories = imported.categories;
+                        transactions = imported.transactions;
+                        if (imported.weeklyBudget) weeklyBudget = imported.weeklyBudget;
+                        renderAll();
+                        alert('資料還原成功！');
+                    }
+                } else {
+                    alert('備份檔案格式不正確！');
+                }
+            } catch (err) {
+                alert('解析備份檔案失敗，請確認檔案是否正確！');
+            }
+            event.target.value = ''; // 清空檔案選擇
+        };
+        reader.readAsText(file);
     }
 
     function changeMonth(direction) {
@@ -989,7 +1044,6 @@
         });
         document.getElementById('netAssets').innerText = '$' + (netAssets - totalDebt);
 
-        // 帳戶管理清單（新增修改金額與刪除按鈕）
         let manageAcc = document.getElementById('manageAccountList');
         manageAcc.innerHTML = '';
         accounts.forEach(acc => {
