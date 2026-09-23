@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#121212">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>質感記帳 App</title>
@@ -1061,6 +1063,14 @@
     }
 
     renderAll();
+    // 註冊 Service Worker 支援 PWA
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('Service Worker 註冊成功:', reg.scope))
+            .catch(err => console.log('Service Worker 註冊失敗:', err));
+    });
+}
 </script>
 
 </body>
