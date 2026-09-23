@@ -1,15 +1,8 @@
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.match('index.html').then((cache) => {
-      return cache;
-    })
-  );
+// 保持 PWA 註冊需求，但不做任何強制快取攔截，避免卡住畫面
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
 });
 
-self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((response) => {
-      return response || fetch(e.request);
-    })
-  );
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
 });
