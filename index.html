@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#121212">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>質感記帳 App</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#121212">
     <style>
         :root {
             --bg-color: #121212;
@@ -335,7 +335,6 @@
             <div id="manageAccountList"></div>
         </div>
         
-        <!-- 備份與還原卡片 -->
         <div class="card">
             <h3>💾 數據備份與還原</h3>
             <p style="font-size:0.85rem; color:#aaa; margin-bottom:12px;">你可以隨時將記帳資料備份下載，或透過備份檔案還原資料。</p>
@@ -674,7 +673,6 @@
         }
     }
 
-    // 數據備份匯出
     function exportBackup() {
         let backupData = {
             accounts: accounts,
@@ -694,7 +692,6 @@
         downloadAnchor.remove();
     }
 
-    // 讀取備份匯入
     function importBackup(event) {
         let file = event.target.files[0];
         if (!file) return;
@@ -717,7 +714,7 @@
             } catch (err) {
                 alert('解析備份檔案失敗，請確認檔案是否正確！');
             }
-            event.target.value = ''; // 清空檔案選擇
+            event.target.value = '';
         };
         reader.readAsText(file);
     }
@@ -839,6 +836,7 @@
         let totalExpense = monthTxs.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
         let totalIncome = monthTxs.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
 
+        // 支出統計
         let catStats = {};
         monthTxs.filter(t => t.type === 'expense').forEach(t => {
             catStats[t.categoryId] = (catStats[t.categoryId] || 0) + t.amount;
@@ -849,14 +847,26 @@
             accStats[t.accountId] = (accStats[t.accountId] || 0) + t.amount;
         });
 
+        // 收入統計
+        let incomeCatStats = {};
+        monthTxs.filter(t => t.type === 'income').forEach(t => {
+            incomeCatStats[t.categoryId] = (incomeCatStats[t.categoryId] || 0) + t.amount;
+        });
+
+        let incomeAccStats = {};
+        monthTxs.filter(t => t.type === 'income').forEach(t => {
+            incomeAccStats[t.accountId] = (incomeAccStats[t.accountId] || 0) + t.amount;
+        });
+
         let contentEl = document.getElementById('analysisContent');
         let html = `
             <p>💰 本月總支出：<strong class="expense">-$${totalExpense}</strong></p>
             <p>💵 本月總收入：<strong class="income">+$${totalIncome}</strong></p>
             <hr style="border:0; border-top:1px solid #444; margin:15px 0;">
-            <h4 style="color:var(--accent-color); margin-bottom:10px;">🏷️ 分類支出佔比 (點擊查看細項)</h4>
+            <h4 style="color:var(--accent-color); margin-bottom:10px;">🏷️ 支出分類佔比 (點擊查看細項)</h4>
         `;
 
+        // 支出分類
         if (totalExpense === 0) {
             html += '<p style="color:#888; text-align:center; margin-bottom:15px;">這個月沒有支出紀錄</p>';
         } else {
@@ -874,9 +884,6 @@
                                 <span>${cat.icon} ${cat.name} ▾</span>
                                 <span>$${amount} (${percent}%)</span>
                             </div>
-                            <div class="stat-bar-bg">
-                                <div class="stat-bar-fill" style="width: ${percent}%;"></div>
-                            </div>
                         </div>
                     </div>
                 `;
@@ -889,7 +896,7 @@
                     } else {
                         subTxs.forEach(st => {
                             let acc = accounts.find(a => a.id === st.accountId) || { name: '' };
-                            html += `<div style="display:flex; justify-content:between; font-size:0.85rem; margin:4px 0; color:#ccc;">
+                            html += `<div style="display:flex; justify-content:space-between; font-size:0.85rem; margin:4px 0; color:#ccc;">
                                 <span>${st.date.slice(5)} - ${st.title} [${acc.name}]</span>
                                 <span class="expense">-$${st.amount}</span>
                             </div>`;
@@ -900,19 +907,15 @@
             });
         }
 
-        html += `
-            <hr style="border:0; border-top:1px solid #444; margin:15px 0;">
-            <h4 style="color:var(--accent-color); margin-bottom:10px;">💳 各帳戶本月開銷 (點擊查看細項)</h4>
-        `;
-
+        // 帳戶支出
+        html += `<h4 style="color:var(--accent-color); margin:15px 0 10px 0;">💳 各帳戶本月開銷 (點擊查看細項)</h4>`;
         let sortedAccs = Object.keys(accStats).sort((a, b) => accStats[b] - accStats[a]);
         if (sortedAccs.length === 0) {
-            html += '<p style="color:#888; text-align:center;">這個月沒有帳戶支出或轉帳紀錄</p>';
+            html += '<p style="color:#888; text-align:center; margin-bottom:15px;">這個月沒有帳戶支出或轉帳紀錄</p>';
         } else {
             sortedAccs.forEach(accId => {
                 let acc = accounts.find(a => a.id === accId) || { name: '未知帳戶', type: 'asset' };
                 let amount = accStats[accId];
-                let accPercent = totalExpense > 0 ? Math.min(100, Math.round((amount / totalExpense) * 100)) : 0;
                 let isExpanded = (drillDownKey === 'acc_' + accId);
 
                 html += `
@@ -921,9 +924,6 @@
                             <div class="stat-bar-info">
                                 <span>💳 ${acc.name} ▾</span>
                                 <span class="expense">-$${amount}</span>
-                            </div>
-                            <div class="stat-bar-bg">
-                                <div class="stat-bar-fill" style="width: ${accPercent}%; background-color: var(--credit-color);"></div>
                             </div>
                         </div>
                     </div>
@@ -937,9 +937,96 @@
                     } else {
                         subTxs.forEach(st => {
                             let cat = categories.find(c => c.id === st.categoryId) || { name: '轉帳', icon: '🔄' };
-                            html += `<div style="display:flex; justify-content:between; font-size:0.85rem; margin:4px 0; color:#ccc;">
+                            html += `<div style="display:flex; justify-content:space-between; font-size:0.85rem; margin:4px 0; color:#ccc;">
                                 <span>${st.date.slice(5)} - ${cat.icon} ${st.title}</span>
                                 <span class="${st.type === 'expense' ? 'expense' : 'transfer'}">-$${st.amount}</span>
+                            </div>`;
+                        });
+                    }
+                    html += `</div>`;
+                }
+            });
+        }
+
+        // ==================== 收入統整區塊 (新增加) ====================
+        html += `
+            <hr style="border:0; border-top:1px solid #444; margin:20px 0 15px 0;">
+            <h4 style="color:var(--success-color); margin-bottom:10px;">📈 收入分類佔比 (點擊查看細項)</h4>
+        `;
+
+        if (totalIncome === 0) {
+            html += '<p style="color:#888; text-align:center; margin-bottom:15px;">這個月沒有收入紀錄</p>';
+        } else {
+            let sortedIncomeCats = Object.keys(incomeCatStats).sort((a, b) => incomeCatStats[b] - incomeCatStats[a]);
+            sortedIncomeCats.forEach(catId => {
+                let cat = categories.find(c => c.id === catId) || { name: '其他收入', icon: '💰' };
+                let amount = incomeCatStats[catId];
+                let percent = Math.round((amount / totalIncome) * 100);
+                let isExpanded = (drillDownKey === 'inc_cat_' + catId);
+
+                html += `
+                    <div class="stat-clickable" onclick="toggleDrillDown('inc_cat_${catId}')">
+                        <div class="stat-bar-container">
+                            <div class="stat-bar-info">
+                                <span>${cat.icon} ${cat.name} ▾</span>
+                                <span class="income">+$${amount} (${percent}%)</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                if (isExpanded) {
+                    let subTxs = monthTxs.filter(t => t.categoryId === catId && t.type === 'income');
+                    html += `<div class="drilldown-list" style="border-left-color: var(--success-color);">`;
+                    if(subTxs.length === 0) {
+                        html += `<p style="color:#888; font-size:0.85rem; margin:5px 0;">無明細紀錄</p>`;
+                    } else {
+                        subTxs.forEach(st => {
+                            let acc = accounts.find(a => a.id === st.accountId) || { name: '' };
+                            html += `<div style="display:flex; justify-content:space-between; font-size:0.85rem; margin:4px 0; color:#ccc;">
+                                <span>${st.date.slice(5)} - ${st.title} [${acc.name}]</span>
+                                <span class="income">+$${st.amount}</span>
+                            </div>`;
+                        });
+                    }
+                    html += `</div>`;
+                }
+            });
+        }
+
+        // 各帳戶本月收入
+        html += `<h4 style="color:var(--success-color); margin:15px 0 10px 0;">💰 各帳戶本月進帳 (點擊查看細項)</h4>`;
+        let sortedIncomeAccs = Object.keys(incomeAccStats).sort((a, b) => incomeAccStats[b] - incomeAccStats[a]);
+        if (sortedIncomeAccs.length === 0) {
+            html += '<p style="color:#888; text-align:center;">這個月沒有帳戶進帳紀錄</p>';
+        } else {
+            sortedIncomeAccs.forEach(accId => {
+                let acc = accounts.find(a => a.id === accId) || { name: '未知帳戶' };
+                let amount = incomeAccStats[accId];
+                let isExpanded = (drillDownKey === 'inc_acc_' + accId);
+
+                html += `
+                    <div class="stat-clickable" onclick="toggleDrillDown('inc_acc_${accId}')">
+                        <div class="stat-bar-container">
+                            <div class="stat-bar-info">
+                                <span>💰 ${acc.name} ▾</span>
+                                <span class="income">+$${amount}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                if (isExpanded) {
+                    let subTxs = monthTxs.filter(t => t.accountId === accId && t.type === 'income');
+                    html += `<div class="drilldown-list" style="border-left-color: var(--success-color);">`;
+                    if(subTxs.length === 0) {
+                        html += `<p style="color:#888; font-size:0.85rem; margin:5px 0;">無明細紀錄</p>`;
+                    } else {
+                        subTxs.forEach(st => {
+                            let cat = categories.find(c => c.id === st.categoryId) || { name: '收入', icon: '💰' };
+                            html += `<div style="display:flex; justify-content:between; font-size:0.85rem; margin:4px 0; color:#ccc;">
+                                <span>${st.date.slice(5)} - ${cat.icon} ${st.title}</span>
+                                <span class="income">+$${st.amount}</span>
                             </div>`;
                         });
                     }
@@ -1063,14 +1150,14 @@
     }
 
     renderAll();
-    // 註冊 Service Worker 支援 PWA
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-            .then(reg => console.log('Service Worker 註冊成功:', reg.scope))
-            .catch(err => console.log('Service Worker 註冊失敗:', err));
-    });
-}
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('Service Worker 註冊成功:', reg.scope))
+                .catch(err => console.log('Service Worker 註冊失敗:', err));
+        });
+    }
 </script>
 
 </body>
