@@ -256,7 +256,7 @@
         </div>
 
         <div class="card">
-            <h3>📝 近期記帳明細</h3>
+            <h3>📝 今日記帳明細</h3>
             <ul id="transactionList" style="list-style: none; padding: 0; margin: 0;"></ul>
         </div>
     </div>
@@ -313,6 +313,9 @@
 
             <label style="font-size:0.85rem; color:#aaa;">備註說明：</label>
             <input type="text" id="txTitle" placeholder="例如：雞腿飯、月薪入帳">
+
+            <!-- 動態加入的每日重複勾選框會顯示在這裡 -->
+            <div id="dailyCheckboxContainer" style="margin: 12px 0;"></div>
 
             <button class="submit-btn" id="submitTxBtn" onclick="saveTransaction()">確認新增</button>
         </div>
@@ -401,6 +404,30 @@
 
     document.getElementById('txDate').valueAsDate = new Date();
 
+    // 初始化時自動在表單中插入每日重複選項
+    document.addEventListener('DOMContentLoaded', () => {
+        const container = document.getElementById('dailyCheckboxContainer');
+        if (container) {
+            container.innerHTML = `
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-color); font-size: 0.9rem;">
+                    <input type="checkbox" id="dynamicIsDaily" style="width: 18px; height: 18px; accent-color: var(--accent-color);">
+                    <span>📌 設為每日自動重複任務</span>
+                </label>
+            `;
+        }
+    });
+
+    function getTodayString() {
+        const d = new Date();
+        return d.toISOString().slice(0, 10);
+    }
+
+    function getTomorrowString(dateStr) {
+        let d = new Date(dateStr);
+        d.setDate(d.getDate() + 1);
+        return d.toISOString().slice(0, 10);
+    }
+
     function switchPage(pageId, btn) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -474,6 +501,8 @@
         let title = document.getElementById('txTitle').value.trim() || (currentTxType === 'transfer' ? '帳戶互轉' : '未命名');
         let accountId = document.getElementById('txAccount').value;
         let toAccountId = document.getElementById('txToAccount').value;
+        let isDailyCheckbox = document.getElementById('dynamicIsDaily');
+        let isDaily = isDailyCheckbox ? isDailyCheckbox.checked : false;
 
         if (isNaN(amount) || amount <= 0) {
             alert('請輸入有效的金額！');
@@ -528,7 +557,8 @@
             type: currentTxType,
             categoryId: currentTxType === 'transfer' ? '' : selectedCategory,
             accountId,
-            toAccountId: currentTxType === 'transfer' ? toAccountId : ''
+            toAccountId: currentTxType === 'transfer' ? toAccountId : '',
+            isDaily: isDaily
         };
 
         transactions.push(tx);
@@ -572,6 +602,9 @@
         document.getElementById('txAmount').value = t.amount;
         document.getElementById('txTitle').value = t.title;
         
+        let isDailyCheckbox = document.getElementById('dynamicIsDaily');
+        if (isDailyCheckbox) isDailyCheckbox.checked = !!t.isDaily;
+
         currentTxType = t.type;
         document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active', 'expense', 'income', 'transfer'));
         if(t.type === 'expense') document.querySelector('.type-btn.expense').classList.add('active', 'expense');
@@ -599,6 +632,8 @@
         document.getElementById('txAmount').value = '';
         document.getElementById('txTitle').value = '';
         document.getElementById('txDate').valueAsDate = new Date();
+        let isDailyCheckbox = document.getElementById('dynamicIsDaily');
+        if (isDailyCheckbox) isDailyCheckbox.checked = false;
     }
 
     function deleteTransaction(id) {
@@ -810,7 +845,7 @@
             li.className = 'item-row';
             li.innerHTML = `
                 <div>
-                    <strong>${cat.icon} ${t.title}</strong><br>
+                    <strong>${cat.icon} ${t.title}</strong> ${t.isDaily ? '<span style="font-size:0.75rem; background:#333; padding:2px 6px; border-radius:4px; color:var(--accent-color);">每日</span>' : ''}<br>
                     <small style="color:#888">[${acc.name}]</small>
                 </div>
                 <div style="display:flex; align-items:center; gap:8px;">
@@ -836,7 +871,6 @@
         let totalExpense = monthTxs.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
         let totalIncome = monthTxs.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
 
-        // 支出統計
         let catStats = {};
         monthTxs.filter(t => t.type === 'expense').forEach(t => {
             catStats[t.categoryId] = (catStats[t.categoryId] || 0) + t.amount;
@@ -847,7 +881,6 @@
             accStats[t.accountId] = (accStats[t.accountId] || 0) + t.amount;
         });
 
-        // 收入統計
         let incomeCatStats = {};
         monthTxs.filter(t => t.type === 'income').forEach(t => {
             incomeCatStats[t.categoryId] = (incomeCatStats[t.categoryId] || 0) + t.amount;
@@ -866,7 +899,6 @@
             <h4 style="color:var(--accent-color); margin-bottom:10px;">🏷️ 支出分類佔比 (點擊查看細項)</h4>
         `;
 
-        // 支出分類
         if (totalExpense === 0) {
             html += '<p style="color:#888; text-align:center; margin-bottom:15px;">這個月沒有支出紀錄</p>';
         } else {
@@ -907,7 +939,6 @@
             });
         }
 
-        // 帳戶支出
         html += `<h4 style="color:var(--accent-color); margin:15px 0 10px 0;">💳 各帳戶本月開銷 (點擊查看細項)</h4>`;
         let sortedAccs = Object.keys(accStats).sort((a, b) => accStats[b] - accStats[a]);
         if (sortedAccs.length === 0) {
@@ -948,7 +979,6 @@
             });
         }
 
-        // ==================== 收入統整區塊 (新增加) ====================
         html += `
             <hr style="border:0; border-top:1px solid #444; margin:20px 0 15px 0;">
             <h4 style="color:var(--success-color); margin-bottom:10px;">📈 收入分類佔比 (點擊查看細項)</h4>
@@ -994,7 +1024,6 @@
             });
         }
 
-        // 各帳戶本月收入
         html += `<h4 style="color:var(--success-color); margin:15px 0 10px 0;">💰 各帳戶本月進帳 (點擊查看細項)</h4>`;
         let sortedIncomeAccs = Object.keys(incomeAccStats).sort((a, b) => incomeAccStats[b] - incomeAccStats[a]);
         if (sortedIncomeAccs.length === 0) {
@@ -1024,7 +1053,7 @@
                     } else {
                         subTxs.forEach(st => {
                             let cat = categories.find(c => c.id === st.categoryId) || { name: '收入', icon: '💰' };
-                            html += `<div style="display:flex; justify-content:between; font-size:0.85rem; margin:4px 0; color:#ccc;">
+                            html += `<div style="display:flex; justify-content:space-between; font-size:0.85rem; margin:4px 0; color:#ccc;">
                                 <span>${st.date.slice(5)} - ${cat.icon} ${st.title}</span>
                                 <span class="income">+$${st.amount}</span>
                             </div>`;
@@ -1039,6 +1068,9 @@
     }
 
     function renderAll() {
+        // 自動檢查是否有每日重複任務需要順延生出（開啟 App 時自動觸發）
+        checkAndGenerateDailyTasks();
+
         localStorage.setItem('my_accounts', JSON.stringify(accounts));
         localStorage.setItem('my_categories', JSON.stringify(categories));
         localStorage.setItem('my_transactions', JSON.stringify(transactions));
@@ -1069,6 +1101,7 @@
         let mondayStr = monday.toISOString().slice(0, 10);
         let sundayStr = sunday.toISOString().slice(0, 10);
         let currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        let todayStr = getTodayString();
 
         let weeklySpent = 0;
         let monthlySpent = 0;
@@ -1076,7 +1109,10 @@
         const listEl = document.getElementById('transactionList');
         listEl.innerHTML = '';
 
-        transactions.slice().reverse().forEach(t => {
+        // 僅篩選出「當天」的明細展示在首頁
+        let todayTxs = transactions.filter(t => t.date === todayStr);
+
+        transactions.forEach(t => {
             if (t.type === 'expense') {
                 if (t.date >= mondayStr && t.date <= sundayStr) {
                     weeklySpent += t.amount;
@@ -1085,8 +1121,12 @@
                     monthlySpent += t.amount;
                 }
             }
+        });
 
-            if(listEl.children.length < 10) {
+        if (todayTxs.length === 0) {
+            listEl.innerHTML = '<li style="color:#888; text-align:center; padding:10px;">今天尚無記帳或任務紀錄</li>';
+        } else {
+            todayTxs.slice().reverse().forEach(t => {
                 let cat = categories.find(c => c.id === t.categoryId) || { name: '其他', icon: '🔄' };
                 let acc = accounts.find(a => a.id === t.accountId) || { name: '' };
 
@@ -1094,8 +1134,8 @@
                 li.className = 'item-row';
                 li.innerHTML = `
                     <div>
-                        <strong>${cat.icon} ${t.title}</strong><br>
-                        <small style="color:#888">${t.date} | [${acc.name}]</small>
+                        <strong>${cat.icon} ${t.title}</strong> ${t.isDaily ? '<span style="font-size:0.75rem; background:#333; padding:2px 6px; border-radius:4px; color:var(--accent-color);">每日</span>' : ''}<br>
+                        <small style="color:#888">[${acc.name}]</small>
                     </div>
                     <div style="display:flex; align-items:center; gap:8px;">
                         <span class="${t.type}">${t.type === 'expense' ? '-' : t.type === 'income' ? '+' : '🔄'}${t.amount}</span>
@@ -1106,8 +1146,8 @@
                     </div>
                 `;
                 listEl.appendChild(li);
-            }
-        });
+            });
+        }
 
         document.getElementById('weeklySpent').innerText = '$' + weeklySpent;
         document.getElementById('weeklyBudgetRemain').innerText = '$' + Math.max(0, weeklyBudget - weeklySpent);
@@ -1146,6 +1186,30 @@
                 </div>
             `;
             manageAcc.appendChild(div);
+        });
+    }
+
+    // 自動檢查並為今天生成昨日標記為「每日重複」的任務
+    function checkAndGenerateDailyTasks() {
+        let todayStr = getTodayString();
+        let dailyTemplates = transactions.filter(t => t.isDaily);
+        
+        dailyTemplates.forEach(template => {
+            let nextDateStr = getTomorrowString(template.date);
+            // 如果明天（或之後的日子）還沒有這個每日任務的複本，就自動幫忙生出來
+            let exists = transactions.some(t => t.title === template.title && t.date === todayStr && t.isDaily);
+            if (!exists && template.date < todayStr) {
+                // 檢查今天是否已經有該任務，沒有的話就補一個今天的
+                let todayExists = transactions.some(t => t.title === template.title && t.date === todayStr);
+                if (!todayExists) {
+                    let newTx = {
+                        ...template,
+                        id: Date.now() + Math.floor(Math.random() * 1000),
+                        date: todayStr
+                    };
+                    transactions.push(newTx);
+                }
+            }
         });
     }
 
